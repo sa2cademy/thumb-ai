@@ -1,3 +1,20 @@
+import vm from 'vm';
+import { Platform } from 'youtubei.js';
+
+// youtubei.js의 기본 eval을 Node.js vm 기반으로 패치
+const origShim = { ...Platform.shim };
+Platform.load({
+  ...origShim,
+  eval: async (data, env) => {
+    const context = vm.createContext({ ...env });
+    const code = data.output.replace(/\nreturn process\(/, '\nvar __result__ = process(');
+    vm.runInContext(code, context);
+    return context.__result__ || context;
+  }
+});
+
+const { default: Innertube } = await import('youtubei.js');
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -9,62 +26,49 @@ export default async function handler(req, res) {
 
   try {
     const videoId = url.match(/(?:shorts\/|v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/)?.[1];
+    console.log('[download] videoId:', videoId);
     if (!videoId) throw new Error('올바른 YouTube URL이 아닙니다');
 
-    const YT_KEY = process.env.YT_API_KEY;
+    console.log('[download] Innertube 초기화...');
+    const yt = await Innertube.create();
 
-    const playerRes = await fetch(`https://www.youtube.com/youtubei/v1/player?key=${YT_KEY}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'User-Agent': 'Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 Chrome/90.0.4430.91 Mobile Safari/537.36',
-        'Origin': 'https://www.youtube.com',
-        'Referer': 'https://www.youtube.com/',
-        'X-YouTube-Client-Name': '2',
-        'X-YouTube-Client-Version': '19.09.3',
-      },
-      body: JSON.stringify({
-        videoId,
-        context: {
-          client: {
-            clientName: 'ANDROID',
-            clientVersion: '19.09.3',
-            androidSdkVersion: 30,
-            hl: 'ko',
-            gl: 'KR',
-          }
-        }
-      })
-    });
+    console.log('[download] 영상 정보 가져오는 중...');
+    const info = await yt.getBasicInfo(videoId);
 
-    const data = await playerRes.json();
-    const formats = data.streamingData?.formats || [];
-    if (!formats.length) throw new Error('포맷 없음 - YouTube가 차단했습니다');
+    const format = info.chooseFormat({ type: 'video+audio', quality: 'best' });
+    console.log('[download] 선택된 포맷:', format.quality_label, format.mime_type);
 
-    const format = formats.sort((a, b) => (b.width || 0) - (a.width || 0))[0];
-    if (!format?.url) throw new Error('다운로드 URL 없음');
+    const streamUrl = await format.decipher(yt.session.player);
+    console.log('[download] decipher 완료, fetch 시작...');
 
-    const videoRes = await fetch(format.url, {
+    const videoRes = await fetch(streamUrl, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Linux; Android 11) AppleWebKit/537.36 Chrome/90.0.4430.91 Mobile Safari/537.36',
         'Referer': 'https://www.youtube.com/',
       }
     });
 
-    if (!videoRes.ok) throw new Error('영상 fetch 실패: ' + videoRes.status);
+    console.log('[download] 영상 fetch 응답:', videoRes.status);
+    if (!videoRes.ok) throw new Error('영상 다운로드 실패: ' + videoRes.status);
 
     res.setHeader('Content-Type', 'video/mp4');
     res.setHeader('Content-Disposition', 'inline; filename="video.mp4"');
 
+    let bytes = 0;
     const reader = videoRes.body.getReader();
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
+      bytes += value.length;
       res.write(Buffer.from(value));
     }
     res.end();
+    console.log('[download] 완료. 전송:', (bytes / 1024 / 1024).toFixed(2), 'MB');
 
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    console.error('[download] 에러:', e.message);
+    if (!res.headersSent) {
+      res.status(500).json({ error: e.message });
+    }
   }
 }

@@ -1,5 +1,8 @@
 {
   "name": "thumb-ai",
   "version": "1.0.0",
-  "type": "module"
+  "type": "module",
+  "dependencies": {
+    "youtubei.js": "^17.0.1"
+  }
 }
