@@ -16,18 +16,28 @@ export default async function handler(req, res) {
   }
 
   try {
-    // URL에서 video ID 추출
     const videoId = url.match(/(?:shorts\/|v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/)?.[1];
     if (!videoId) throw new Error('올바른 YouTube URL이 아닙니다');
 
-    const yt = await Innertube.create({ retrieve_player: false });
-    const info = await yt.getBasicInfo(videoId);
-    
-    const format = info.streaming_data?.formats
-      ?.filter(f => f.has_video && f.has_audio)
-      ?.sort((a, b) => (b.width || 0) - (a.width || 0))?.[0];
+    const yt = await Innertube.create();
+    const info = await yt.getInfo(videoId);
 
-    if (!format?.url) throw new Error('스트림 URL을 찾을 수 없습니다');
+    // 오디오+비디오 합쳐진 포맷 중 최고화질
+    const formats = info.streaming_data?.formats || [];
+    const adaptiveFormats = info.streaming_data?.adaptive_formats || [];
+    const allFormats = [...formats, ...adaptiveFormats];
+
+    // 합쳐진 포맷 우선
+    let format = formats.sort((a, b) => (b.width || 0) - (a.width || 0))[0];
+    
+    // 없으면 adaptive에서 비디오만 (화질 최고)
+    if (!format?.url) {
+      format = adaptiveFormats
+        .filter(f => f.mime_type?.includes('video/mp4'))
+        .sort((a, b) => (b.width || 0) - (a.width || 0))[0];
+    }
+
+    if (!format?.url) throw new Error('스트림 URL을 찾을 수 없습니다. 포맷 수: ' + allFormats.length);
 
     const videoRes = await fetch(format.url, {
       headers: {
@@ -36,7 +46,7 @@ export default async function handler(req, res) {
       }
     });
 
-    if (!videoRes.ok) throw new Error('영상 다운로드 실패: ' + videoRes.status);
+    if (!videoRes.ok) throw new Error('영상 fetch 실패: ' + videoRes.status);
 
     res.setHeader('Content-Type', 'video/mp4');
     res.setHeader('Content-Disposition', 'inline; filename="video.mp4"');
