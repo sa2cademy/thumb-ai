@@ -11,48 +11,43 @@ export default async function handler(req, res) {
     const videoId = url.match(/(?:shorts\/|v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/)?.[1];
     if (!videoId) throw new Error('올바른 YouTube URL이 아닙니다');
 
-    // Invidious 공개 인스턴스 목록 (순차 시도)
-    const instances = [
-      'https://invidious.privacydev.net',
-      'https://vid.puffyan.us',
-      'https://invidious.nerdvpn.de',
-      'https://inv.tux.pizza',
-      'https://invidious.flokinet.to',
-    ];
+    const YT_KEY = process.env.YT_API_KEY;
 
-    let videoUrl = null;
-    let lastError = '';
-
-    for (const instance of instances) {
-      try {
-        const apiRes = await fetch(`${instance}/api/v1/videos/${videoId}?fields=formatStreams,adaptiveFormats`, {
-          headers: { 'User-Agent': 'thumb-ai/1.0' },
-          signal: AbortSignal.timeout(6000)
-        });
-
-        if (!apiRes.ok) continue;
-        const data = await apiRes.json();
-
-        // formatStreams = 오디오+비디오 합쳐진 것
-        const streams = data.formatStreams || [];
-        const best = streams.sort((a, b) => (parseInt(b.resolution) || 0) - (parseInt(a.resolution) || 0))[0];
-
-        if (best?.url) {
-          videoUrl = best.url;
-          break;
-        }
-      } catch(e) {
-        lastError = e.message;
-        continue;
-      }
-    }
-
-    if (!videoUrl) throw new Error('모든 인스턴스 실패: ' + lastError);
-
-    // 영상 프록시
-    const videoRes = await fetch(videoUrl, {
+    const playerRes = await fetch(`https://www.youtube.com/youtubei/v1/player?key=${YT_KEY}`, {
+      method: 'POST',
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36',
+        'Content-Type': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 Chrome/90.0.4430.91 Mobile Safari/537.36',
+        'Origin': 'https://www.youtube.com',
+        'Referer': 'https://www.youtube.com/',
+        'X-YouTube-Client-Name': '2',
+        'X-YouTube-Client-Version': '19.09.3',
+      },
+      body: JSON.stringify({
+        videoId,
+        context: {
+          client: {
+            clientName: 'ANDROID',
+            clientVersion: '19.09.3',
+            androidSdkVersion: 30,
+            hl: 'ko',
+            gl: 'KR',
+          }
+        }
+      })
+    });
+
+    const data = await playerRes.json();
+    const formats = data.streamingData?.formats || [];
+    if (!formats.length) throw new Error('포맷 없음 - YouTube가 차단했습니다');
+
+    const format = formats.sort((a, b) => (b.width || 0) - (a.width || 0))[0];
+    if (!format?.url) throw new Error('다운로드 URL 없음');
+
+    const videoRes = await fetch(format.url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Linux; Android 11) AppleWebKit/537.36 Chrome/90.0.4430.91 Mobile Safari/537.36',
+        'Referer': 'https://www.youtube.com/',
       }
     });
 
