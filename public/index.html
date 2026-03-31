@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>THUMB AI — 썸네일 픽커</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Pretendard:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --surface: #111111;
+    --surface2: #1a1a1a;
+    --border: #222222;
+    --accent: #ff4500;
+    --accent2: #ff6a00;
+    --text: #f0f0f0;
+    --muted: #555;
+    --muted2: #777;
+    --radius: 8px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Pretendard', sans-serif;
+    min-height: 100vh;
+  }
+  .container { max-width: 900px; margin: 0 auto; padding: 40px 24px; }
+
+  header { margin-bottom: 48px; display: flex; align-items: flex-end; gap: 16px; }
+  .logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 52px;
+    letter-spacing: 2px;
+    line-height: 1;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .logo-sub { font-size: 13px; color: var(--muted2); letter-spacing: 0.1em; padding-bottom: 6px; }
+
+  /* API 키 */
+  .api-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 18px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .api-label { font-size: 11px; color: var(--muted2); white-space: nowrap; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; }
+  .api-input { flex: 1; background: transparent; border: none; outline: none; color: var(--text); font-size: 13px; }
+  .api-input::placeholder { color: var(--muted); }
+  .api-toggle { background: none; border: none; cursor: pointer; color: var(--muted); font-size: 15px; transition: color 0.2s; }
+  .api-toggle:hover { color: var(--text); }
+
+  /* 카드 */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 20px; }
+  .card-header { padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+  .step-badge { width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .card-title { font-size: 13px; font-weight: 600; letter-spacing: 0.04em; }
+  .card-body { padding: 20px; }
+
+  /* 입력/버튼 */
+  .row { display: flex; gap: 10px; }
+  .url-input {
+    flex: 1; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 6px; padding: 12px 16px; color: var(--text);
+    font-family: 'Pretendard', sans-serif; font-size: 14px; outline: none; transition: border-color 0.2s;
+  }
+  .url-input:focus { border-color: var(--accent); }
+  .url-input::placeholder { color: var(--muted); }
+
+  .btn { padding: 12px 20px; border-radius: 6px; border: none; cursor: pointer; font-family: 'Pretendard', sans-serif; font-size: 13px; font-weight: 600; transition: all 0.2s; white-space: nowrap; }
+  .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; }
+  .btn-primary:hover { opacity: 0.85; transform: translateY(-1px); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+  .btn-sm { padding: 8px 14px; font-size: 12px; }
+
+  /* 진행 상태 */
+  #status-box { display: none; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-bottom: 20px; }
+  .status-label { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted2); margin-bottom: 12px; font-weight: 600; }
+  .progress-wrap { background: var(--border); border-radius: 100px; height: 4px; margin-bottom: 10px; overflow: hidden; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); border-radius: 100px; transition: width 0.4s ease; width: 0%; }
+  .status-text { font-size: 13px; color: var(--muted2); }
+
+  /* 비디오 미리보기 */
+  #video-wrap { display: none; margin-top: 16px; }
+  #preview-video { width: 100%; max-height: 320px; border-radius: 6px; background: #000; object-fit: contain; }
+  .video-info { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; gap: 12px; }
+  .video-meta { font-size: 12px; color: var(--muted); }
+
+  /* 프레임 그리드 */
+  #frames-section { display: none; }
+  .frames-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+  .frame-item { aspect-ratio: 9/16; border-radius: 4px; overflow: hidden; border: 2px solid transparent; position: relative; transition: border-color 0.2s; }
+  .frame-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .frame-num { position: absolute; bottom: 3px; left: 3px; background: rgba(0,0,0,0.75); color: #fff; font-size: 9px; padding: 2px 5px; border-radius: 3px; font-weight: 700; }
+  .frame-item.picked { border-color: var(--accent); }
+  .frame-item.picked::after { content: '★'; position: absolute; top: 3px; right: 3px; background: var(--accent); color: #fff; font-size: 9px; width: 16px; height: 16px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+
+  /* 결과 */
+  #result-section { display: none; }
+  .result-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+  .result-title { font-family: 'Bebas Neue', sans-serif; font-size: 30px; letter-spacing: 2px; }
+  .result-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+  .result-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; transition: transform 0.2s, border-color 0.2s; }
+  .result-card:hover { transform: translateY(-2px); border-color: var(--accent); }
+  .result-card.best { border-color: var(--accent); }
+  .result-rank { position: absolute; top: 8px; left: 8px; background: var(--accent); color: #fff; font-family: 'Bebas Neue', sans-serif; font-size: 16px; letter-spacing: 1px; padding: 2px 8px; border-radius: 4px; z-index: 1; }
+  .result-card.best .result-rank { background: #ffd700; color: #000; }
+  .img-wrap { aspect-ratio: 9/16; overflow: hidden; background: #000; position: relative; }
+  .img-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .result-meta { padding: 14px; }
+  .result-time { font-size: 11px; color: var(--muted); margin-bottom: 6px; font-weight: 500; }
+  .result-reason { font-size: 13px; color: var(--muted2); line-height: 1.6; }
+  .save-btn { display: block; width: 100%; text-align: center; margin-top: 10px; padding: 8px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--muted2); font-size: 12px; cursor: pointer; font-family: 'Pretendard', sans-serif; font-weight: 600; transition: all 0.2s; }
+  .save-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  canvas { display: none; }
+
+  .toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(16px); background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 11px 22px; border-radius: 8px; font-size: 13px; opacity: 0; transition: all 0.25s; z-index: 999; white-space: nowrap; pointer-events: none; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  .note { font-size: 12px; color: var(--muted); margin-top: 10px; line-height: 1.6; }
+</style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+
+<div class="container">
+  <header>
+    <div class="logo">THUMB AI</div>
+    <div class="logo-sub">Shorts Thumbnail Picker</div>
+  </header>
+
+  <!-- Claude API 키 -->
+  <div class="api-section">
+    <span class="api-label">Claude API Key</span>
+    <input type="password" id="api-key" class="api-input" placeholder="sk-ant-...">
+    <button class="api-toggle" onclick="toggleKey()">👁</button>
+  </div>
+
+  <!-- STEP 1: URL 입력 & 다운로드 -->
+  <div class="card">
+    <div class="card-header">
+      <div class="step-badge">1</div>
+      <div class="card-title">YouTube Shorts URL 입력</div>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <input type="text" id="yt-url" class="url-input" placeholder="https://www.youtube.com/shorts/...">
+        <button class="btn btn-primary" onclick="loadVideo()" id="load-btn">영상 불러오기</button>
+      </div>
+      <p class="note">영상을 앱 안에서 직접 불러와 분석합니다.</p>
+
+      <div id="video-wrap">
+        <video id="preview-video" controls playsinline muted></video>
+        <div class="video-info">
+          <span class="video-meta" id="video-meta"></span>
+          <button class="btn btn-primary btn-sm" onclick="analyzeVideo()" id="analyze-btn">🔍 AI 썸네일 분석</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 진행 상태 -->
+  <div id="status-box">
+    <div class="status-label">분석 중</div>
+    <div class="progress-wrap"><div class="progress-fill" id="progress-fill"></div></div>
+    <div class="status-text" id="status-text">준비 중...</div>
+  </div>
+
+  <!-- 프레임 미리보기 -->
+  <div id="frames-section" class="card">
+    <div class="card-header">
+      <div class="step-badge">2</div>
+      <div class="card-title">추출 프레임 <span id="frame-count" style="color:var(--muted);font-weight:400;font-size:12px"></span></div>
+    </div>
+    <div class="card-body">
+      <div class="frames-grid" id="frames-grid"></div>
+    </div>
+  </div>
+
+  <!-- 결과 -->
+  <div id="result-section">
+    <div class="result-top">
+      <div class="result-title">AI 추천 썸네일</div>
+      <button class="btn btn-primary btn-sm" onclick="resetAll()">↺ 다시</button>
+    </div>
+    <div class="result-grid" id="result-grid"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  let frames = [];
+
+  function toggleKey() {
+    const i = document.getElementById('api-key');
+    i.type = i.type === 'password' ? 'text' : 'password';
+  }
+
+  function toast(msg, ms = 3500) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), ms);
+  }
+
+  function setProgress(pct, text) {
+    document.getElementById('progress-fill').style.width = pct + '%';
+    document.getElementById('status-text').textContent = text;
+  }
+
+  function showStatus(v) {
+    document.getElementById('status-box').style.display = v ? 'block' : 'none';
+  }
+
+  // ── 영상 불러오기 ──
+  async function loadVideo() {
+    const url = document.getElementById('yt-url').value.trim();
+    if (!url) { toast('URL을 입력해주세요'); return; }
+
+    const btn = document.getElementById('load-btn');
+    btn.disabled = true;
+    btn.textContent = '불러오는 중...';
+
+    try {
+      // Netlify Function 호출
+      const res = await fetch(`/api/download?url=${encodeURIComponent(url)}`);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || '영상 불러오기 실패 (' + res.status + ')');
+      }
+
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+
+      const video = document.getElementById('preview-video');
+      video.src = blobUrl;
+      video.onloadedmetadata = () => {
+        document.getElementById('video-meta').textContent = `길이: ${Math.round(video.duration)}초 · ${video.videoWidth}×${video.videoHeight}`;
+      };
+
+      document.getElementById('video-wrap').style.display = 'block';
+      toast('✅ 영상 로드 완료!');
+    } catch(e) {
+      toast('❌ ' + e.message);
+    }
+
+    btn.disabled = false;
+    btn.textContent = '영상 불러오기';
+  }
+
+  // ── 프레임 추출 ──
+  function extractFrames(video, count) {
+    return new Promise(resolve => {
+      const canvas = document.getElementById('canvas');
+      const ctx = canvas.getContext('2d');
+      const result = [];
+      const dur = video.duration;
+      const times = Array.from({ length: count }, (_, i) => dur * (i + 1) / (count + 1));
+      let idx = 0;
+
+      const next = () => {
+        if (idx >= times.length) { resolve(result); return; }
+        video.currentTime = times[idx];
+      };
+
+      video.onseeked = () => {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0);
+        result.push({ index: idx + 1, time: times[idx], dataUrl: canvas.toDataURL('image/jpeg', 0.88) });
+        idx++;
+        setProgress(10 + idx / times.length * 45, `프레임 추출 중... ${idx}/${times.length}`);
+        next();
+      };
+
+      next();
+    });
+  }
+
+  // ── 그리드 이미지 생성 ──
+  function buildGrid(frames, cols = 5) {
+    const tw = 180, th = Math.round(tw * 16 / 9), lh = 22, pad = 4;
+    const rows = Math.ceil(frames.length / cols);
+    const c = document.createElement('canvas');
+    c.width = cols * (tw + pad) + pad;
+    c.height = rows * (th + lh + pad) + pad;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#111';
+    ctx.fillRect(0, 0, c.width, c.height);
+
+    return new Promise(resolve => {
+      let done = 0;
+      frames.forEach((f, i) => {
+        const img = new Image();
+        img.onload = () => {
+          const col = i % cols, row = Math.floor(i / cols);
+          const x = pad + col * (tw + pad), y = pad + row * (th + lh + pad);
+          ctx.drawImage(img, x, y, tw, th);
+          ctx.fillStyle = 'rgba(0,0,0,0.75)';
+          ctx.fillRect(x, y + th, tw, lh);
+          ctx.fillStyle = '#fff';
+          ctx.font = 'bold 11px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(`${f.index} · ${Math.round(f.time)}s`, x + tw / 2, y + th + 15);
+          if (++done === frames.length) resolve(c.toDataURL('image/jpeg', 0.88));
+        };
+        img.src = f.dataUrl;
+      });
+    });
+  }
+
+  // ── 메인 분석 ──
+  async function analyzeVideo() {
+    const apiKey = document.getElementById('api-key').value.trim();
+    if (!apiKey) { toast('Claude API 키를 입력해주세요'); return; }
+
+    const video = document.getElementById('preview-video');
+    if (!video.src || !video.duration) { toast('먼저 영상을 불러오세요'); return; }
+
+    document.getElementById('analyze-btn').disabled = true;
+    document.getElementById('frames-section').style.display = 'none';
+    document.getElementById('result-section').style.display = 'none';
+    frames = [];
+    showStatus(true);
+    setProgress(5, '준비 중...');
+
+    try {
+      // 프레임 수: 초당 0.4장, 최소 10 최대 20
+      const count = Math.min(20, Math.max(10, Math.round(video.duration * 0.4)));
+      frames = await extractFrames(video, count);
+
+      // 프레임 그리드 UI 표시
+      renderFrameGrid(frames);
+
+      // 그리드 이미지 생성
+      setProgress(60, 'AI 분석 중...');
+      const gridImg = await buildGrid(frames);
+      const b64 = gridImg.split(',')[1];
+
+      // Claude API 호출
+      const apiRes = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true'
+        },
+        body: JSON.stringify({
+          model: 'claude-opus-4-5',
+          max_tokens: 512,
+          messages: [{
+            role: 'user',
+            content: [
+              { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: b64 } },
+              { type: 'text', text: `유튜브 쇼츠 영상에서 추출한 ${frames.length}개 프레임입니다. 각 프레임에 번호와 타임스탬프가 있습니다.
+
+썸네일로 가장 좋은 프레임 4개를 선택해주세요.
+기준: 인물 표정이 강렬하고 감정이 풍부한 순간, 선명하고 밝은 화면, 핵심 장면/클라이맥스, 시청자 호기심을 자극하는 구도, 자막 없는 깨끗한 프레임.
+
+JSON만 반환 (다른 텍스트 없이):
+{"picks":[{"rank":1,"frame":프레임번호,"reason":"이유(25자이내)"},{"rank":2,"frame":프레임번호,"reason":"이유"},{"rank":3,"frame":프레임번호,"reason":"이유"},{"rank":4,"frame":프레임번호,"reason":"이유"}]}` }
+            ]
+          }]
+        })
+      });
+
+      const apiData = await apiRes.json();
+      if (apiData.error) throw new Error(apiData.error.message);
+
+      const raw = apiData.content[0].text.replace(/```json|```/g, '').trim();
+      const { picks } = JSON.parse(raw);
+
+      setProgress(100, '완료!');
+      setTimeout(() => { showStatus(false); renderResults(picks); }, 400);
+
+    } catch(e) {
+      showStatus(false);
+      toast('❌ ' + e.message);
+      console.error(e);
+    }
+
+    document.getElementById('analyze-btn').disabled = false;
+  }
+
+  function renderFrameGrid(frames) {
+    const grid = document.getElementById('frames-grid');
+    grid.innerHTML = '';
+    document.getElementById('frame-count').textContent = `(${frames.length}장)`;
+    frames.forEach(f => {
+      const div = document.createElement('div');
+      div.className = 'frame-item';
+      div.id = `f${f.index}`;
+      div.innerHTML = `<img src="${f.dataUrl}"><div class="frame-num">${f.index}</div>`;
+      grid.appendChild(div);
+    });
+    document.getElementById('frames-section').style.display = 'block';
+  }
+
+  function renderResults(picks) {
+    picks.forEach(p => {
+      const el = document.getElementById(`f${p.frame}`);
+      if (el) el.classList.add('picked');
+    });
+
+    const grid = document.getElementById('result-grid');
+    grid.innerHTML = '';
+    picks.forEach(p => {
+      const frame = frames.find(f => f.index === p.frame);
+      if (!frame) return;
+      const div = document.createElement('div');
+      div.className = 'result-card' + (p.rank === 1 ? ' best' : '');
+      div.innerHTML = `
+        <div class="img-wrap">
+          <div class="result-rank">${p.rank === 1 ? '🥇 BEST' : '#' + p.rank}</div>
+          <img src="${frame.dataUrl}">
+        </div>
+        <div class="result-meta">
+          <div class="result-time">⏱ ${Math.round(frame.time)}초 · 프레임 ${frame.index}</div>
+          <div class="result-reason">${p.reason}</div>
+          <button class="save-btn" onclick="saveFrame('${frame.dataUrl}', ${frame.index})">⬇ 이미지 저장</button>
+        </div>`;
+      grid.appendChild(div);
+    });
+
+    document.getElementById('result-section').style.display = 'block';
+    document.getElementById('result-section').scrollIntoView({ behavior: 'smooth' });
+  }
+
+  function saveFrame(dataUrl, idx) {
+    const a = document.createElement('a');
+    a.href = dataUrl;
+    a.download = `thumbnail_${idx}.jpg`;
+    a.click();
+  }
+
+  function resetAll() {
+    document.getElementById('result-section').style.display = 'none';
+    document.getElementById('frames-section').style.display = 'none';
+    frames = [];
+  }
+</script>
+</body>
+</html>

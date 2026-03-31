@@ -1,0 +1,8 @@
+{
+  "name": "thumb-ai",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "@distube/ytdl-core": "^4.16.8"
+  }
+}
