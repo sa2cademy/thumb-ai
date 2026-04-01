@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>THUMB AI — 설정</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Pretendard:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --surface: rgba(255,255,255,0.04);
+    --surface2: rgba(255,255,255,0.06);
+    --surface3: rgba(255,255,255,0.1);
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.14);
+    --accent: #3182f6;
+    --accent2: #5b9cf6;
+    --accent-bg: rgba(49,130,246,0.08);
+    --text: #ececec;
+    --text2: #b0b0b0;
+    --muted: #555;
+    --muted2: #888;
+    --radius: 16px;
+    --radius-sm: 10px;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:'Pretendard',sans-serif; min-height:100vh; }
+  .container { max-width:640px; margin:0 auto; padding:48px 20px 80px; }
+  header { margin-bottom:36px; display:flex; align-items:center; gap:12px; }
+  .logo { font-family:'Bebas Neue',sans-serif; font-size:28px; letter-spacing:1px; line-height:1; color:var(--text); }
+  .logo-sub { display:none; }
+  .card { background:var(--surface); backdrop-filter:blur(20px); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin-bottom:16px; }
+  .card-header { padding:18px 20px; display:flex; align-items:center; gap:12px; }
+  .card-title { font-size:15px; font-weight:600; }
+  .card-body { padding:0 20px 20px; }
+  .btn { padding:14px 24px; border-radius:var(--radius-sm); border:none; cursor:pointer; font-family:'Pretendard',sans-serif; font-size:14px; font-weight:600; transition:all 0.2s; white-space:nowrap; }
+  .btn-primary { background:var(--accent); color:#fff; }
+  .btn-primary:hover { background:var(--accent2); }
+  .btn-primary:active { transform:scale(0.97); }
+  .btn-primary:disabled { opacity:0.35; cursor:not-allowed; transform:none; }
+  .btn-sm { padding:10px 16px; font-size:13px; border-radius:8px; }
+  .btn-danger { background:transparent; border:1px solid #c0392b; color:#c0392b; padding:8px 14px; font-size:12px; border-radius:8px; }
+  .btn-danger:hover { background:#c0392b; color:#fff; }
+  .api-section { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:14px 18px; margin-bottom:20px; display:flex; align-items:center; gap:12px; }
+  .api-label { font-size:11px; color:var(--muted2); white-space:nowrap; font-weight:600; text-transform:uppercase; letter-spacing:0.08em; }
+  .api-input { flex:1; background:transparent; border:none; outline:none; color:var(--text); font-size:13px; }
+  .api-input::placeholder { color:var(--muted); }
+  .api-toggle { background:none; border:none; cursor:pointer; color:var(--muted); font-size:15px; transition:color 0.2s; }
+  .api-toggle:hover { color:var(--text); }
+  .file-drop { border:2px dashed var(--border2); border-radius:var(--radius); padding:40px 20px; text-align:center; color:var(--muted); font-size:14px; cursor:pointer; transition:all 0.2s; }
+  .file-drop:hover,.file-drop.dragover { border-color:var(--accent); color:var(--accent); background:var(--accent-bg); }
+  .file-drop input { display:none; }
+  .style-info { background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius-sm); padding:16px; margin-top:12px; font-size:13px; color:var(--muted2); line-height:1.8; white-space:pre-wrap; max-height:200px; overflow-y:auto; }
+  .note { font-size:12px; color:var(--muted); margin-top:10px; line-height:1.6; }
+  .status-text { font-size:13px; color:var(--muted2); margin-top:10px; }
+  .toast { position:fixed; bottom:32px; left:50%; transform:translateX(-50%) translateY(20px); background:var(--surface3); backdrop-filter:blur(20px); border:1px solid var(--border); color:var(--text); padding:14px 24px; border-radius:var(--radius-sm); font-size:14px; opacity:0; transition:all 0.3s cubic-bezier(0.16,1,0.3,1); z-index:9999; white-space:nowrap; pointer-events:none; }
+  .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+
+  /* 프리셋 탭 */
+  .preset-tabs { display:flex; gap:6px; margin-bottom:20px; flex-wrap:wrap; }
+  .preset-tab { padding:10px 16px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--muted2); font-size:13px; font-weight:600; cursor:pointer; transition:all 0.2s; font-family:'Pretendard',sans-serif; }
+  .preset-tab:hover { border-color:var(--accent); color:var(--accent); }
+  .preset-tab.active { border-color:var(--accent); background:var(--accent); color:#fff; }
+  .preset-name { font-size:11px; color:var(--muted); display:block; margin-top:2px; font-weight:400; }
+  .name-input { background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:8px 12px; color:var(--text); font-size:13px; font-family:'Pretendard',sans-serif; outline:none; width:200px; margin-bottom:12px; transition:all 0.2s; }
+  .name-input:focus { border-color:var(--accent); background:var(--accent-bg); }
+  .sample-count { display:inline-block; background:var(--accent); color:#fff; font-size:11px; font-weight:700; padding:2px 8px; border-radius:10px; }
+  .script-item { background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:10px 12px; font-size:12px; color:var(--muted2); line-height:1.5; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .file-chip { background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:4px 10px; font-size:11px; color:var(--muted2); display:flex; align-items:center; gap:4px; }
+  .file-chip .icon { font-size:14px; }
+
+  @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="logo">THUMB AI</div>
+    <div class="logo-sub">Settings</div>
+    <a href="/" style="margin-left:auto;padding:8px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--muted2);font-size:13px;font-weight:500;text-decoration:none;transition:all 0.2s;">메인</a>
+  </header>
+
+  <!-- API 키 -->
+  <div class="card" style="margin-bottom:20px;">
+    <div class="card-header">
+      <div class="card-title">API 키</div>
+    </div>
+    <div class="card-body" style="display:flex;flex-direction:column;gap:12px;">
+      <div class="api-section" style="margin:0;">
+        <span class="api-label">Claude</span>
+        <input type="password" id="api-key" class="api-input" placeholder="sk-ant-...">
+        <button class="api-toggle" onclick="toggleKey('api-key')">👁</button>
+        <button class="btn btn-sm" style="background:var(--surface2);color:var(--muted2);border:1px solid var(--border);border-radius:8px;" onclick="saveKey('claude_api_key','api-key','save-claude-btn')" id="save-claude-btn">저장</button>
+      </div>
+      <div class="api-section">
+        <span class="api-label">ElevenLabs</span>
+        <input type="password" id="eleven-key" class="api-input" placeholder="xi-...">
+        <button class="api-toggle" onclick="toggleKey('eleven-key')">👁</button>
+        <button class="btn btn-sm" style="background:var(--surface2);color:var(--muted2);border:1px solid var(--border);border-radius:8px;" onclick="saveKey('eleven_api_key','eleven-key','save-eleven-btn')" id="save-eleven-btn">저장</button>
+      </div>
+      <div class="api-section" style="margin:0;">
+        <span class="api-label">Typecast</span>
+        <input type="password" id="typecast-key" class="api-input" placeholder="tc-...">
+        <button class="api-toggle" onclick="toggleKey('typecast-key')">👁</button>
+        <button class="btn btn-sm" style="background:var(--surface2);color:var(--muted2);border:1px solid var(--border);border-radius:8px;" onclick="saveKey('typecast_api_key','typecast-key','save-typecast-btn')" id="save-typecast-btn">저장</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 프리셋 탭 -->
+  <div class="preset-tabs" id="preset-tabs"></div>
+
+  <!-- 프리셋 편집 -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title" id="preset-title">프리셋 1</div>
+      <span class="sample-count" id="sample-count" style="display:none;">0개</span>
+      <div style="margin-left:auto;display:flex;gap:6px;">
+        <button class="btn-danger" onclick="resetPreset()">초기화</button>
+        <button class="btn-danger" onclick="deletePreset()">삭제</button>
+      </div>
+    </div>
+    <div class="card-body">
+      <input type="text" class="name-input" id="preset-name-input" placeholder="프리셋 이름 (예: 김팩트)" oninput="savePresetName()">
+
+      <div class="file-drop" id="file-drop" onclick="document.getElementById('file-input').click()">
+        <div id="drop-empty">
+          <div style="font-size:32px;margin-bottom:8px;">📁</div>
+          txt 파일을 드래그하거나 클릭해서 업로드<br>
+          <span style="font-size:11px;color:var(--muted);">여러 파일 가능 · 대본은 자동으로 구분됩니다</span>
+        </div>
+        <div id="drop-loaded" style="display:none;text-align:left;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+            <span style="font-size:24px;">📂</span>
+            <span style="font-size:13px;font-weight:600;color:var(--text);" id="files-summary"></span>
+            <span style="font-size:11px;color:var(--muted);margin-left:auto;">클릭하여 추가</span>
+          </div>
+          <div id="files-list" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+        </div>
+        <input type="file" id="file-input" accept=".txt" multiple>
+      </div>
+
+      <div id="style-guide-wrap" style="display:none;">
+        <button class="btn btn-primary btn-sm" onclick="analyzeStyle()" id="analyze-btn" style="margin-top:12px;">스타일 분석하기</button>
+        <div id="style-status" class="status-text"></div>
+        <div id="style-guide" class="style-info" style="display:none;"></div>
+      </div>
+    </div>
+  </div>
+
+  <p class="note">스타일 분석 완료 후 메인 페이지에서 프리셋을 선택하고 대본을 생성할 수 있습니다.</p>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const MAX_PRESETS = 5;
+  let currentPreset = 0;
+  let presets = []; // [{name, scripts, styleGuide, samples, fileNames}]
+  let allScripts = [];
+  let uploadedFiles = [];
+
+  function toggleKey(id) {
+    const i = document.getElementById(id);
+    i.type = i.type === 'password' ? 'text' : 'password';
+  }
+
+  function saveKey(storageKey, inputId, btnId) {
+    const v = document.getElementById(inputId).value.trim();
+    if (!v) { toast('API 키를 입력해주세요'); return; }
+    localStorage.setItem(storageKey, v);
+    document.getElementById(btnId).textContent = '저장됨';
+    toast('API 키가 저장되었습니다');
+  }
+
+  // 초기화
+  window.addEventListener('DOMContentLoaded', () => {
+    const claudeKey = localStorage.getItem('claude_api_key');
+    if (claudeKey) { document.getElementById('api-key').value = claudeKey; document.getElementById('save-claude-btn').textContent = '저장됨'; }
+    const elevenKey = localStorage.getItem('eleven_api_key');
+    if (elevenKey) { document.getElementById('eleven-key').value = elevenKey; document.getElementById('save-eleven-btn').textContent = '저장됨'; }
+    const typecastKey = localStorage.getItem('typecast_api_key');
+    if (typecastKey) { document.getElementById('typecast-key').value = typecastKey; document.getElementById('save-typecast-btn').textContent = '저장됨'; }
+
+    // 프리셋 로드
+    const savedPresets = localStorage.getItem('script_presets');
+    if (savedPresets) {
+      presets = JSON.parse(savedPresets);
+    }
+    // 최소 1개 보장
+    while (presets.length < 1) presets.push({ name: '', scripts: [], styleGuide: '', samples: [] });
+
+    renderTabs();
+    loadPreset(0);
+  });
+
+  function toast(msg, ms = 3500) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), ms);
+  }
+
+  let isAnalyzing = false;
+
+  function savePresets() {
+    localStorage.setItem('script_presets', JSON.stringify(presets));
+  }
+
+  function renderDropZone() {
+    const empty = document.getElementById('drop-empty');
+    const loaded = document.getElementById('drop-loaded');
+
+    if (!uploadedFiles.length) {
+      empty.style.display = 'block';
+      loaded.style.display = 'none';
+      return;
+    }
+
+    empty.style.display = 'none';
+    loaded.style.display = 'block';
+    document.getElementById('files-summary').textContent = `${uploadedFiles.length}개 파일 · ${allScripts.length}개 대본`;
+
+    const list = document.getElementById('files-list');
+    list.innerHTML = '';
+    uploadedFiles.forEach(f => {
+      const chip = document.createElement('div');
+      chip.className = 'file-chip';
+      chip.innerHTML = `<span class="icon">📄</span> ${f.name} <span style="color:var(--accent);font-weight:700;">${f.count}</span>`;
+      list.appendChild(chip);
+    });
+  }
+
+  // 페이지 이탈 경고 (분석 중일 때)
+  window.onbeforeunload = (e) => {
+    if (isAnalyzing) { e.preventDefault(); return ''; }
+  };
+
+  // ── 프리셋 탭 ──
+  function renderTabs() {
+    const container = document.getElementById('preset-tabs');
+    container.innerHTML = '';
+    presets.forEach((p, i) => {
+      const tab = document.createElement('button');
+      tab.className = 'preset-tab' + (i === currentPreset ? ' active' : '');
+      tab.innerHTML = `${i + 1}<span class="preset-name">${p.name || '이름 없음'}</span>`;
+      tab.onclick = () => loadPreset(i);
+      container.appendChild(tab);
+    });
+    // 추가 버튼 (5개 미만일 때)
+    if (presets.length < MAX_PRESETS) {
+      const addBtn = document.createElement('button');
+      addBtn.className = 'preset-tab';
+      addBtn.textContent = '+';
+      addBtn.onclick = addPreset;
+      container.appendChild(addBtn);
+    }
+  }
+
+  function addPreset() {
+    presets.push({ name: '', scripts: [], styleGuide: '', samples: [] });
+    savePresets();
+    renderTabs();
+    loadPreset(presets.length - 1);
+  }
+
+  function loadPreset(idx) {
+    currentPreset = idx;
+    const p = presets[idx];
+    allScripts = [...(p.scripts || [])];
+    uploadedFiles = [...(p.fileNames || [])];
+
+    document.getElementById('preset-title').textContent = `프리셋 ${idx + 1}`;
+    document.getElementById('preset-name-input').value = p.name || '';
+
+    if (allScripts.length) {
+      document.getElementById('sample-count').textContent = allScripts.length + '개';
+      document.getElementById('sample-count').style.display = 'inline-block';
+      document.getElementById('upload-status').innerHTML = `<p class="note">${allScripts.length}개 대본 저장됨</p>`;
+    } else {
+      document.getElementById('sample-count').style.display = 'none';
+      document.getElementById('upload-status').innerHTML = '';
+    }
+
+    if (p.styleGuide) {
+      document.getElementById('style-guide').textContent = p.styleGuide;
+      document.getElementById('style-guide').style.display = 'block';
+      document.getElementById('style-guide-wrap').style.display = 'block';
+      document.getElementById('style-status').textContent = '스타일 가이드 저장됨';
+    } else if (allScripts.length) {
+      document.getElementById('style-guide').style.display = 'none';
+      document.getElementById('style-guide-wrap').style.display = 'block';
+      document.getElementById('style-status').textContent = '';
+    } else {
+      document.getElementById('style-guide-wrap').style.display = 'none';
+      document.getElementById('style-guide').style.display = 'none';
+    }
+
+    renderTabs();
+    renderDropZone();
+  }
+
+  function savePresetName() {
+    presets[currentPreset].name = document.getElementById('preset-name-input').value.trim();
+    savePresets();
+    renderTabs();
+  }
+
+  function resetPreset() {
+    presets[currentPreset] = { name: '', scripts: [], styleGuide: '', samples: [] };
+    savePresets();
+    loadPreset(currentPreset);
+    toast('프리셋 초기화됨');
+  }
+
+  function deletePreset() {
+    if (presets.length <= 1) { toast('최소 1개 프리셋은 유지해야 합니다'); return; }
+    presets.splice(currentPreset, 1);
+    savePresets();
+    loadPreset(Math.min(currentPreset, presets.length - 1));
+    toast('프리셋 삭제됨');
+  }
+
+  // ── 파일 업로드 ──
+  const dropZone = document.getElementById('file-drop');
+  const fileInput = document.getElementById('file-input');
+  dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+  dropZone.addEventListener('drop', (e) => { e.preventDefault(); dropZone.classList.remove('dragover'); handleFiles(e.dataTransfer.files); });
+  fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
+
+  async function handleFiles(files) {
+    for (const file of files) {
+      const text = await file.text();
+      const scripts = text.split(/\n\s*\n\s*\n/).map(s => s.trim()).filter(s => s.length > 30);
+      allScripts.push(...scripts);
+      uploadedFiles.push({ name: file.name, count: scripts.length });
+    }
+    presets[currentPreset].scripts = allScripts;
+    presets[currentPreset].fileNames = uploadedFiles;
+    savePresets();
+
+    document.getElementById('sample-count').textContent = allScripts.length + '개';
+    document.getElementById('sample-count').style.display = 'inline-block';
+    document.getElementById('style-guide-wrap').style.display = 'block';
+    renderDropZone();
+  }
+
+  // ── 스타일 분석 ──
+  async function analyzeStyle() {
+    const apiKey = document.getElementById('api-key').value.trim();
+    if (!apiKey) { toast('API 키를 입력해주세요'); return; }
+    if (!allScripts.length) { toast('대본을 먼저 업로드해주세요'); return; }
+
+    const btn = document.getElementById('analyze-btn');
+    btn.disabled = true;
+    btn.textContent = '분석 중...';
+    isAnalyzing = true;
+    const statusEl = document.getElementById('style-status');
+
+    try {
+      const BATCH_SIZE = 50;
+      const batches = [];
+      for (let i = 0; i < allScripts.length; i += BATCH_SIZE) batches.push(allScripts.slice(i, i + BATCH_SIZE));
+
+      let partialGuides = [];
+      for (let i = 0; i < batches.length; i++) {
+        statusEl.textContent = `배치 ${i+1}/${batches.length} 분석 중... (${batches[i].length}개)`;
+        const batchText = batches[i].map((s, idx) => `[대본 ${i*BATCH_SIZE+idx+1}]\n${s}`).join('\n\n---\n\n');
+
+        const res = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: { 'Content-Type':'application/json', 'x-api-key':apiKey, 'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' },
+          body: JSON.stringify({
+            model: 'claude-opus-4-5', max_tokens: 2048,
+            messages: [{ role:'user', content:`다음은 유튜브 쇼츠 대본 ${batches[i].length}개입니다. 공통 작성 스타일을 분석해주세요.\n\n분석 항목:\n1. 말투/어조\n2. 문장 구조\n3. 대본 구조 (도입-본론-마무리)\n4. 도입부 후킹 방식\n5. 마무리 특징\n6. 자주 쓰는 표현\n7. 평균 길이\n8. 주제 다루는 방식\n\n간결하게 핵심만.\n\n${batchText}` }]
+          })
+        });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error.message);
+        partialGuides.push(data.content[0].text);
+      }
+
+      let finalGuide;
+      if (partialGuides.length > 1) {
+        statusEl.textContent = '통합 중...';
+        const res = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: { 'Content-Type':'application/json', 'x-api-key':apiKey, 'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' },
+          body: JSON.stringify({
+            model: 'claude-opus-4-5', max_tokens: 2048,
+            messages: [{ role:'user', content:`여러 배치 분석 결과를 하나의 스타일 가이드로 통합. 간결하게.\n\n${partialGuides.map((g,i)=>`[배치 ${i+1}]\n${g}`).join('\n\n---\n\n')}` }]
+          })
+        });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error.message);
+        finalGuide = data.content[0].text;
+      } else {
+        finalGuide = partialGuides[0];
+      }
+
+      const mid = Math.floor(allScripts.length / 2);
+      const samples = [allScripts[0], allScripts[mid], allScripts[allScripts.length - 1]];
+
+      presets[currentPreset].styleGuide = finalGuide;
+      presets[currentPreset].samples = samples;
+      savePresets();
+
+      document.getElementById('style-guide').textContent = finalGuide;
+      document.getElementById('style-guide').style.display = 'block';
+      statusEl.textContent = `분석 완료! (${allScripts.length}개 대본)`;
+      toast('스타일 분석 완료!');
+
+    } catch(e) {
+      statusEl.textContent = '분석 실패: ' + e.message;
+      toast('분석 실패');
+    }
+
+    btn.disabled = false;
+    btn.textContent = '스타일 분석하기';
+    isAnalyzing = false;
+  }
+</script>
+</body>
+</html>

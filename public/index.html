@@ -8,15 +8,22 @@
 <style>
   :root {
     --bg: #0a0a0a;
-    --surface: #111111;
-    --surface2: #1a1a1a;
-    --border: #222222;
-    --accent: #ff4500;
-    --accent2: #ff6a00;
-    --text: #f0f0f0;
+    --surface: rgba(255,255,255,0.04);
+    --surface2: rgba(255,255,255,0.06);
+    --surface3: rgba(255,255,255,0.1);
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.14);
+    --accent: #3182f6;
+    --accent2: #5b9cf6;
+    --accent-bg: rgba(49,130,246,0.08);
+    --accent-glow: rgba(49,130,246,0.15);
+    --text: #ececec;
+    --text2: #b0b0b0;
     --muted: #555;
-    --muted2: #777;
-    --radius: 8px;
+    --muted2: #888;
+    --radius: 16px;
+    --radius-sm: 10px;
+    --shadow: 0 2px 16px rgba(0,0,0,0.2);
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
@@ -25,19 +32,13 @@
     font-family: 'Pretendard', sans-serif;
     min-height: 100vh;
   }
-  .container { max-width: 900px; margin: 0 auto; padding: 40px 24px; }
+  .container { max-width: 640px; margin: 0 auto; padding: 48px 20px 80px; }
 
-  header { margin-bottom: 48px; display: flex; align-items: flex-end; gap: 16px; }
-  .logo {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 52px;
-    letter-spacing: 2px;
-    line-height: 1;
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-  }
-  .logo-sub { font-size: 13px; color: var(--muted2); letter-spacing: 0.1em; padding-bottom: 6px; }
+  /* 헤더 */
+  header { margin-bottom: 40px; display: flex; align-items: center; gap: 14px; }
+  .logo { font-family: 'Bebas Neue', sans-serif; font-size: 32px; letter-spacing: 1.5px; line-height: 1; color: var(--text); }
+  .logo span { color: var(--accent); }
+  .logo-sub { font-size: 12px; color: var(--muted2); letter-spacing: 0.04em; font-weight: 400; }
 
   /* API 키 */
   .api-section {
@@ -57,38 +58,57 @@
   .api-toggle:hover { color: var(--text); }
 
   /* 카드 */
-  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 20px; }
-  .card-header { padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
-  .step-badge { width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-  .card-title { font-size: 13px; font-weight: 600; letter-spacing: 0.04em; }
-  .card-body { padding: 20px; }
+  .card { background: var(--surface); backdrop-filter: blur(20px); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 16px; transition: border-color 0.3s; }
+  .card:hover { border-color: var(--border2); }
+  .card-header { padding: 18px 20px; display: flex; align-items: center; gap: 12px; }
+  .step-badge { width: 26px; height: 26px; border-radius: 8px; background: var(--accent); color: #fff; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 2px 8px var(--accent-glow); }
+  .card-title { font-size: 15px; font-weight: 600; }
+  .card-body { padding: 0 20px 20px; }
 
   /* 입력/버튼 */
   .row { display: flex; gap: 10px; }
   .url-input {
     flex: 1; background: var(--surface2); border: 1px solid var(--border);
-    border-radius: 6px; padding: 12px 16px; color: var(--text);
-    font-family: 'Pretendard', sans-serif; font-size: 14px; outline: none; transition: border-color 0.2s;
+    border-radius: var(--radius-sm); padding: 14px 16px; color: var(--text);
+    font-family: 'Pretendard', sans-serif; font-size: 15px; outline: none; transition: all 0.25s;
   }
-  .url-input:focus { border-color: var(--accent); }
+  .url-input:focus { border-color: var(--accent); background: var(--accent-bg); box-shadow: 0 0 0 3px var(--accent-glow); }
   .url-input::placeholder { color: var(--muted); }
 
-  .btn { padding: 12px 20px; border-radius: 6px; border: none; cursor: pointer; font-family: 'Pretendard', sans-serif; font-size: 13px; font-weight: 600; transition: all 0.2s; white-space: nowrap; }
-  .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; }
-  .btn-primary:hover { opacity: 0.85; transform: translateY(-1px); }
-  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
-  .btn-sm { padding: 8px 14px; font-size: 12px; }
+  .btn { padding: 14px 24px; border-radius: var(--radius-sm); border: none; cursor: pointer; font-family: 'Pretendard', sans-serif; font-size: 14px; font-weight: 600; transition: all 0.2s; white-space: nowrap; }
+  .btn-primary { background: var(--accent); color: #fff; box-shadow: 0 2px 10px var(--accent-glow); }
+  .btn-primary:hover { background: var(--accent2); box-shadow: 0 4px 16px var(--accent-glow); }
+  .btn-primary:active { transform: scale(0.97); }
+  .btn-primary:disabled { opacity: 0.35; cursor: not-allowed; transform: none; box-shadow: none; }
+  .btn-sm { padding: 10px 16px; font-size: 13px; border-radius: 8px; }
+  .btn-ghost { background: var(--surface2); color: var(--text2); border: 1px solid var(--border); }
+  .btn-ghost:hover { background: var(--surface3); border-color: var(--border2); color: var(--text); }
 
   /* 진행 상태 */
-  #status-box { display: none; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-bottom: 20px; }
+  #status-box { display: none; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 20px; }
   .status-label { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted2); margin-bottom: 12px; font-weight: 600; }
   .progress-wrap { background: var(--border); border-radius: 100px; height: 4px; margin-bottom: 10px; overflow: hidden; }
   .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); border-radius: 100px; transition: width 0.4s ease; width: 0%; }
   .status-text { font-size: 13px; color: var(--muted2); }
 
+  /* 글로벌 로딩 */
+  .loading-bar { display:none; background:var(--surface); backdrop-filter:blur(20px); border:1px solid var(--border); border-radius:var(--radius); padding:20px; margin-bottom:16px; }
+  .loading-bar.show { display:block; animation:fadeIn 0.3s ease; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+  @keyframes slideUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+  .loading-inner { display:flex; align-items:center; gap:14px; }
+  .spinner { width:24px; height:24px; border:2.5px solid var(--border2); border-top-color:var(--accent); border-radius:50%; animation:spin 0.7s linear infinite; flex-shrink:0; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .loading-step { font-size:15px; color:var(--text); font-weight:600; }
+  .loading-sub { font-size:13px; color:var(--muted2); margin-top:4px; }
+  .loading-progress { margin-top:16px; background:var(--border); border-radius:100px; height:4px; overflow:hidden; }
+  .loading-progress-fill { height:100%; background:linear-gradient(90deg, var(--accent), var(--accent2)); border-radius:100px; transition:width 0.5s ease; width:0%; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+  .loading-pulse { animation:pulse 1.5s ease-in-out infinite; }
+
   /* 비디오 미리보기 */
   #video-wrap { display: none; margin-top: 16px; }
-  #preview-video { width: 100%; max-height: 320px; border-radius: 6px; background: #000; object-fit: contain; }
+  #preview-video { width: 100%; max-height: 360px; border-radius: var(--radius-sm); background: #000; object-fit: contain; }
   .video-info { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; gap: 12px; }
   .video-meta { font-size: 12px; color: var(--muted); }
 
@@ -102,41 +122,82 @@
   .frame-item.picked::after { content: '★'; position: absolute; top: 3px; right: 3px; background: var(--accent); color: #fff; font-size: 9px; width: 16px; height: 16px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
 
   /* 결과 */
-  #result-section { display: none; }
-  .result-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-  .result-title { font-family: 'Bebas Neue', sans-serif; font-size: 30px; letter-spacing: 2px; }
-  .result-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
-  .result-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; cursor: pointer; transition: transform 0.2s, border-color 0.2s; }
-  .result-card:hover { transform: translateY(-2px); border-color: var(--accent); }
-  .result-card.best { border-color: var(--accent); }
-  .result-rank { position: absolute; top: 6px; left: 6px; background: var(--accent); color: #fff; font-family: 'Bebas Neue', sans-serif; font-size: 13px; letter-spacing: 1px; padding: 2px 6px; border-radius: 4px; z-index: 1; }
-  .result-card.best .result-rank { background: #ffd700; color: #000; }
+  #result-section { display: none; animation: slideUp 0.4s ease; }
+  .result-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-top: 8px; }
+  .result-title { font-size: 18px; font-weight: 700; }
+  .result-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .result-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; cursor: pointer; transition: all 0.25s; }
+  .result-card:hover { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(0,0,0,0.35); border-color: var(--border2); }
+  .result-card.best { border-color: var(--accent); box-shadow: 0 4px 20px var(--accent-glow); }
+  .result-rank { position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.6); backdrop-filter:blur(8px); color: #fff; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 8px; z-index: 1; }
+  .result-card.best .result-rank { background: var(--accent); box-shadow: 0 2px 8px var(--accent-glow); }
   .img-wrap { aspect-ratio: 9/16; overflow: hidden; background: #000; position: relative; }
-  .img-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .result-meta { padding: 8px; }
-  .result-reason { font-size: 11px; color: var(--muted2); line-height: 1.4; }
+  .img-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.3s; }
+  .result-card:hover .img-wrap img { transform: scale(1.03); }
+  .result-meta { padding: 10px 12px; }
+  .result-reason { font-size: 12px; color: var(--muted2); line-height: 1.5; }
 
   /* 이미지 확대 모달 */
-  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 1000; align-items: center; justify-content: center; }
-  .modal-overlay.show { display: flex; }
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter:blur(12px); z-index: 1000; align-items: center; justify-content: center; }
+  .modal-overlay.show { display: flex; animation:fadeIn 0.2s ease; }
   .modal-content { position: relative; max-width: 380px; width: 90%; }
-  .modal-content img { width: 100%; border-radius: 8px; display: block; }
-  .modal-info { text-align: center; margin-top: 12px; }
-  .modal-reason { font-size: 14px; color: var(--muted2); margin-bottom: 12px; }
-  .modal-save { padding: 10px 24px; background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; border: none; border-radius: 6px; font-family: 'Pretendard', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; }
-  .modal-close { position: absolute; top: -36px; right: 0; background: none; border: none; color: var(--muted2); font-size: 24px; cursor: pointer; }
+  .modal-content img { width: 100%; border-radius: var(--radius); display: block; box-shadow: 0 16px 48px rgba(0,0,0,0.4); }
+  .modal-info { text-align: center; margin-top: 16px; }
+  .modal-reason { font-size: 14px; color: var(--text2); margin-bottom: 14px; }
+  .modal-save { padding: 12px 28px; background: var(--accent); color: #fff; border: none; border-radius: var(--radius-sm); font-family: 'Pretendard', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; transition:all 0.2s; box-shadow: 0 2px 10px var(--accent-glow); }
+  .modal-save:hover { background: var(--accent2); box-shadow: 0 4px 16px var(--accent-glow); }
+  .modal-close { position: absolute; top: -44px; right: 0; background: var(--surface3); border: none; color: var(--text2); font-size: 18px; cursor: pointer; width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; transition:all 0.2s; backdrop-filter:blur(8px); }
+  .modal-close:hover { background:var(--surface3); color:var(--text); transform:scale(1.1); }
+
+  /* 섹션 구분 */
+  .section-divider { height:1px; background:var(--border); margin:24px 0; }
 
   /* 자막+썸네일 레이아웃 */
-  .caption-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-top: 20px; }
-  .caption-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-  .caption-label { font-size: 13px; font-weight: 600; }
-  .caption-copy { padding: 4px 10px; background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; color: var(--muted2); font-size: 11px; cursor: pointer; font-family: 'Pretendard', sans-serif; font-weight: 600; }
-  .caption-copy:hover { border-color: var(--accent); color: var(--accent); }
+  .caption-box { background: var(--surface); backdrop-filter:blur(20px); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-top: 16px; animation:slideUp 0.4s ease; }
+  .caption-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 8px; }
+  .caption-label { font-size: 14px; font-weight: 600; display:flex; align-items:center; gap:8px; }
+  .caption-label::before { content:''; width:3px; height:16px; background:var(--accent); border-radius:2px; }
+  .caption-copy { padding: 7px 14px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text2); font-size: 12px; cursor: pointer; font-family: 'Pretendard', sans-serif; font-weight: 500; transition:all 0.2s; }
+  .caption-copy:hover { background:var(--accent-bg); border-color: var(--accent); color: var(--accent); }
   .caption-text { font-size: 13px; color: var(--muted2); line-height: 1.8; max-height: 200px; overflow-y: auto; white-space: pre-wrap; }
+
+  /* TTS */
+  .tts-controls { display: flex; gap: 8px; align-items: center; margin-top: 14px; flex-wrap: wrap; }
+  .tts-audio { width: 100%; margin-top: 12px; border-radius: 8px; }
+
+  /* 목소리 선택 */
+  .voice-picker-btn { flex: 1; min-width: 150px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; color: var(--text); font-size: 13px; font-family: 'Pretendard', sans-serif; cursor: pointer; text-align: left; transition: all 0.2s; display: flex; align-items: center; gap: 10px; }
+  .voice-picker-btn:hover { border-color: var(--accent); background: var(--accent-bg); }
+  .voice-picker-btn img { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; }
+  .voice-picker-btn .placeholder { width: 28px; height: 28px; border-radius: 50%; background: var(--border2); display: flex; align-items: center; justify-content: center; font-size: 11px; color: var(--muted); }
+
+  .voice-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; max-height: 60vh; overflow-y: auto; padding: 4px; }
+  .voice-card { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px; cursor: pointer; transition: all 0.2s; display: flex; gap: 12px; align-items: center; }
+  .voice-card:hover { border-color: var(--accent); transform: translateY(-1px); }
+  .voice-card.selected { border-color: var(--accent); background: var(--accent-bg); }
+  .voice-card-img { width: 48px; height: 48px; border-radius: 50%; object-fit: cover; flex-shrink: 0; background: var(--border); }
+  .voice-card-info { flex: 1; min-width: 0; }
+  .voice-card-name { font-size: 13px; font-weight: 600; margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .voice-card-meta { font-size: 11px; color: var(--muted2); display: flex; gap: 6px; flex-wrap: wrap; }
+  .voice-card-badge { background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 2px 6px; font-size: 10px; }
+  .voice-card-preview { background: none; border: 1px solid var(--border); border-radius: 50%; width: 30px; height: 30px; color: var(--muted2); cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; transition: all 0.2s; }
+  .voice-card-preview:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-bg); }
+
+  /* 탭 */
+  .main-tabs { display:flex; gap:4px; margin-bottom:24px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:4px; }
+  .main-tab { flex:1; padding:12px; text-align:center; background:transparent; border:none; border-radius:12px; color:var(--muted2); font-size:14px; font-weight:600; cursor:pointer; font-family:'Pretendard',sans-serif; transition:all 0.25s; }
+  .main-tab:hover { color:var(--text2); }
+  .main-tab.active { background:var(--accent); color:#fff; box-shadow:0 2px 8px var(--accent-glow); }
+  .tab-content { display:none; }
+  .tab-content.active { display:block; animation:fadeIn 0.3s ease; }
+
+  /* 파일 업로드 */
+  .file-drop { border:2px dashed var(--border2); border-radius:var(--radius); padding:48px 20px; text-align:center; color:var(--muted); font-size:14px; cursor:pointer; transition:all 0.2s; }
+  .file-drop:hover,.file-drop.dragover { border-color:var(--accent); color:var(--accent); background:var(--accent-bg); }
 
   canvas { display: none; }
 
-  .toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(16px); background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 11px 22px; border-radius: 8px; font-size: 13px; opacity: 0; transition: all 0.25s; z-index: 999; white-space: nowrap; pointer-events: none; }
+  .toast { position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--surface3); backdrop-filter:blur(20px); border: 1px solid var(--border2); color: var(--text); padding: 14px 24px; border-radius: var(--radius-sm); font-size: 14px; font-weight: 500; opacity: 0; transition: all 0.3s cubic-bezier(0.16,1,0.3,1); z-index: 9999; white-space: nowrap; pointer-events: none; box-shadow: var(--shadow); }
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
   .note { font-size: 12px; color: var(--muted); margin-top: 10px; line-height: 1.6; }
@@ -147,67 +208,176 @@
 
 <div class="container">
   <header>
-    <div class="logo">THUMB AI</div>
-    <div class="logo-sub">Shorts Thumbnail Picker</div>
+    <div>
+      <div class="logo">THUMB<span>.</span>AI</div>
+      <div class="logo-sub">Shorts Thumbnail Picker</div>
+    </div>
+    <a href="/script.html" style="margin-left:auto;padding:8px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--muted2);font-size:13px;font-weight:500;text-decoration:none;transition:all 0.2s;">설정</a>
   </header>
 
-  <!-- Claude API 키 -->
-  <div class="api-section">
-    <span class="api-label">Claude API Key</span>
-    <input type="password" id="api-key" class="api-input" placeholder="sk-ant-...">
-    <button class="api-toggle" onclick="toggleKey()">👁</button>
-    <button class="btn btn-sm" style="background:var(--surface2);color:var(--muted2);border:1px solid var(--border);" onclick="saveKey()" id="save-key-btn">저장</button>
+
+  <!-- 탭 -->
+  <div class="main-tabs">
+    <button class="main-tab active" onclick="switchTab('youtube')">YouTube</button>
+    <button class="main-tab" onclick="switchTab('myvideos')">내 영상</button>
   </div>
 
-  <!-- STEP 1: URL 입력 & 다운로드 -->
-  <div class="card">
-    <div class="card-header">
-      <div class="step-badge">1</div>
-      <div class="card-title">YouTube Shorts URL 입력</div>
-    </div>
-    <div class="card-body">
-      <div class="row">
-        <input type="text" id="yt-url" class="url-input" placeholder="https://www.youtube.com/shorts/...">
-        <button class="btn btn-primary" onclick="loadVideo()" id="load-btn">영상 불러오기</button>
+  <!-- YouTube 탭 -->
+  <div class="tab-content active" id="tab-youtube">
+    <div class="card">
+      <div class="card-header">
+        <div class="step-badge">1</div>
+        <div class="card-title">URL 입력</div>
       </div>
-      <p class="note">영상을 앱 안에서 직접 불러와 분석합니다.</p>
+      <div class="card-body">
+        <div class="row">
+          <input type="text" id="yt-url" class="url-input" placeholder="YouTube URL 또는 기사 URL 붙여넣기">
+          <button class="btn btn-primary" onclick="loadUrl()" id="load-btn">불러오기</button>
+        </div>
+        <p class="note">YouTube → 영상 음성 인식 · 기사 URL → 본문 추출 → 대본 생성</p>
 
-      <div id="video-wrap">
-        <video id="preview-video" controls playsinline muted></video>
-        <div class="video-info">
-          <span class="video-meta" id="video-meta"></span>
-          <div style="display:flex;gap:8px;">
+        <div id="video-wrap">
+          <video id="preview-video" controls playsinline muted></video>
+          <div class="video-info">
+            <span class="video-meta" id="video-meta"></span>
             <button class="btn btn-primary btn-sm" onclick="transcribeVideo()" id="stt-btn">🎙 음성 인식</button>
-            <button class="btn btn-primary btn-sm" onclick="analyzeVideo()" id="analyze-btn">🔍 AI 썸네일 분석</button>
           </div>
+        </div>
+
+        <!-- 기사 본문 -->
+        <div id="article-wrap" style="display:none;margin-top:16px;">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:8px;" id="article-source"></div>
+          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:16px;font-size:13px;color:var(--muted2);line-height:1.8;max-height:200px;overflow-y:auto;white-space:pre-wrap;" id="article-content"></div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- 진행 상태 -->
-  <div id="status-box">
-    <div class="status-label">분석 중</div>
-    <div class="progress-wrap"><div class="progress-fill" id="progress-fill"></div></div>
-    <div class="status-text" id="status-text">준비 중...</div>
-  </div>
+  <!-- 내 영상 탭 -->
+  <div class="tab-content" id="tab-myvideos">
+    <div class="card">
+      <div class="card-header">
+        <div class="step-badge">1</div>
+        <div class="card-title">내 영상 업로드</div>
+      </div>
+      <div class="card-body">
+        <div class="file-drop" id="video-drop" onclick="document.getElementById('video-input').click()">
+          <div style="font-size:32px;margin-bottom:8px;">🎬</div>
+          영상 파일을 드래그하거나 클릭해서 업로드<br>
+          <span style="font-size:11px;color:var(--muted);">mp4, mov, webm 지원</span>
+          <input type="file" id="video-input" accept="video/*" style="display:none;">
+        </div>
 
-  <!-- 결과 -->
-  <div id="result-section">
-    <div class="result-top">
-      <div class="result-title">AI 추천 썸네일</div>
-      <button class="btn btn-primary btn-sm" onclick="resetAll()">↺ 다시</button>
+        <div id="my-video-wrap" style="display:none;margin-top:16px;">
+          <video id="my-preview-video" controls playsinline muted style="width:100%;max-height:320px;border-radius:var(--radius-sm);background:#000;object-fit:contain;"></video>
+          <div class="video-info" style="margin-top:12px;">
+            <span class="video-meta" id="my-video-meta"></span>
+            <button class="btn btn-primary btn-sm" onclick="analyzeMyVideo()" id="my-analyze-btn">🔍 AI 썸네일 분석</button>
+          </div>
+        </div>
+      </div>
     </div>
-    <div class="result-grid" id="result-grid"></div>
+
+    <!-- 진행 상태 -->
+    <div id="my-status-box" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:20px;">
+      <div class="status-label">분석 중</div>
+      <div class="progress-wrap"><div class="progress-fill" id="my-progress-fill"></div></div>
+      <div class="status-text" id="my-status-text">준비 중...</div>
+    </div>
+
+    <!-- 결과 -->
+    <div id="my-result-section" style="display:none;">
+      <div class="result-top">
+        <div class="result-title">AI 추천 썸네일</div>
+        <button class="btn btn-primary btn-sm" onclick="resetMyResults()">↺ 다시</button>
+      </div>
+      <div class="result-grid" id="my-result-grid"></div>
+    </div>
   </div>
 
-  <!-- 자막 스크립트 (결과와 별개로 표시) -->
+  <!-- 글로벌 로딩 -->
+  <div class="loading-bar" id="loading-bar">
+    <div class="loading-inner">
+      <div class="spinner"></div>
+      <div>
+        <div class="loading-step" id="loading-step">처리 중...</div>
+        <div class="loading-sub loading-pulse" id="loading-sub"></div>
+      </div>
+    </div>
+    <div class="loading-progress"><div class="loading-progress-fill" id="loading-fill"></div></div>
+  </div>
+
+  <!-- 자막 스크립트 -->
   <div id="caption-section" class="caption-box" style="display:none;">
     <div class="caption-header">
       <span class="caption-label">자막 스크립트</span>
-      <button class="caption-copy" onclick="copyCaptions()">복사</button>
+      <span id="caption-preview" style="flex:1;font-size:12px;color:var(--muted);margin:0 12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></span>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <select id="preset-select" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text2);font-size:12px;padding:7px 10px;font-family:'Pretendard',sans-serif;outline:none;transition:border-color 0.2s;"></select>
+        <button class="caption-copy" onclick="generateFromTranscript()" id="gen-script-btn" style="display:none;">대본 생성</button>
+        <button class="caption-copy" onclick="openCaptionModal()">보기/수정</button>
+        <button class="caption-copy" onclick="copyCaptions()">복사</button>
+      </div>
     </div>
-    <div id="caption-content" class="caption-text"></div>
+    <div id="caption-content" style="display:none;"></div>
+  </div>
+
+  <!-- 자막 수정 모달 -->
+  <div class="modal-overlay" id="caption-modal" onclick="closeCaptionModal(event)">
+    <div style="position:relative;width:90%;max-width:600px;max-height:80vh;display:flex;flex-direction:column;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <span style="font-size:15px;font-weight:600;">자막 스크립트</span>
+        <div style="display:flex;gap:8px;">
+          <button class="caption-copy" onclick="saveCaptionEdit()">저장</button>
+          <button class="modal-close" onclick="closeCaptionModal()" style="position:static;font-size:20px;">&times;</button>
+        </div>
+      </div>
+      <textarea id="caption-editor" style="flex:1;min-height:400px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:16px;color:var(--text);font-size:14px;font-family:'Pretendard',sans-serif;line-height:2;resize:none;outline:none;"></textarea>
+    </div>
+  </div>
+
+  <!-- 생성된 대본 -->
+  <div id="script-section" class="caption-box" style="display:none;">
+    <div class="caption-header">
+      <span class="caption-label">생성된 대본</span>
+      <button class="caption-copy" onclick="copyScript()">복사</button>
+    </div>
+    <div id="script-content" class="caption-text"></div>
+
+    <!-- TTS -->
+    <div id="tts-controls" style="display:none;margin-top:14px;">
+      <!-- 서비스 선택 탭 -->
+      <div style="display:flex;gap:0;margin-bottom:10px;">
+        <button class="caption-copy" id="tts-tab-eleven" onclick="switchTTSService('eleven')" style="border-radius:4px 0 0 4px;border-right:none;padding:6px 14px;">ElevenLabs</button>
+        <button class="caption-copy" id="tts-tab-typecast" onclick="switchTTSService('typecast')" style="border-radius:0 4px 4px 0;padding:6px 14px;">Typecast</button>
+      </div>
+
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <button class="voice-picker-btn" id="voice-picker-btn" onclick="toggleVoicePanel()" style="flex:1;">
+          <span class="placeholder">?</span>
+          <span>목소리를 선택하세요</span>
+        </button>
+        <!-- 타입캐스트 감정 선택 -->
+        <select id="tc-emotion" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:12px;padding:8px 10px;font-family:'Pretendard',sans-serif;outline:none;">
+          <option value="normal">보통</option>
+          <option value="happy">행복</option>
+          <option value="sad">슬픔</option>
+          <option value="angry">분노</option>
+          <option value="whisper">속삭임</option>
+          <option value="toneup">톤업</option>
+          <option value="tonedown">톤다운</option>
+        </select>
+        <button class="btn btn-primary btn-sm" onclick="generateTTS()" id="tts-btn">음성 생성</button>
+      </div>
+    </div>
+    <div id="voice-panel" style="display:none;margin-top:10px;">
+      <div class="voice-grid" id="voice-grid"></div>
+    </div>
+    <audio id="tts-audio" class="tts-audio" controls style="display:none;"></audio>
+    <div id="tts-download" style="display:none;margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="caption-copy" onclick="downloadTTS()">음성 다운로드</button>
+      <button class="caption-copy" onclick="downloadSRT()" id="srt-download-btn">자막 다운로드 (SRT)</button>
+    </div>
   </div>
 </div>
 
@@ -228,26 +398,21 @@
 <script>
   let frames = [];
 
-  // 저장된 API 키 불러오기
-  window.addEventListener('DOMContentLoaded', () => {
-    const saved = localStorage.getItem('claude_api_key');
-    if (saved) {
-      document.getElementById('api-key').value = saved;
-      document.getElementById('save-key-btn').textContent = '저장됨';
-    }
-  });
+  // API 키는 설정 페이지에서 저장, 여기서는 localStorage에서 읽기만
+  function getApiKey() { return localStorage.getItem('claude_api_key') || ''; }
+  function getElevenKey() { return localStorage.getItem('eleven_api_key') || ''; }
 
-  function saveKey() {
-    const v = document.getElementById('api-key').value.trim();
-    if (!v) { toast('API 키를 입력해주세요'); return; }
-    localStorage.setItem('claude_api_key', v);
-    document.getElementById('save-key-btn').textContent = '저장됨';
-    toast('API 키가 저장되었습니다');
+  // ── 로딩 표시 ──
+  function showLoading(step, sub, pct) {
+    const bar = document.getElementById('loading-bar');
+    bar.classList.add('show');
+    document.getElementById('loading-step').textContent = step;
+    document.getElementById('loading-sub').textContent = sub || '';
+    if (pct !== undefined) document.getElementById('loading-fill').style.width = pct + '%';
   }
-
-  function toggleKey() {
-    const i = document.getElementById('api-key');
-    i.type = i.type === 'password' ? 'text' : 'password';
+  function hideLoading() {
+    document.getElementById('loading-bar').classList.remove('show');
+    document.getElementById('loading-fill').style.width = '0%';
   }
 
   function toast(msg, ms = 3500) {
@@ -266,7 +431,211 @@
     document.getElementById('status-box').style.display = v ? 'block' : 'none';
   }
 
-  // ── 영상 불러오기 ──
+  // ── 탭 전환 ──
+  function switchTab(tab) {
+    document.querySelectorAll('.main-tab').forEach((t, i) => {
+      t.classList.toggle('active', (tab === 'youtube' && i === 0) || (tab === 'myvideos' && i === 1));
+    });
+    document.getElementById('tab-youtube').classList.toggle('active', tab === 'youtube');
+    document.getElementById('tab-myvideos').classList.toggle('active', tab === 'myvideos');
+  }
+
+  // ── 내 영상 업로드 ──
+  const videoDrop = document.getElementById('video-drop');
+  const videoInput = document.getElementById('video-input');
+  videoDrop.addEventListener('dragover', (e) => { e.preventDefault(); videoDrop.classList.add('dragover'); });
+  videoDrop.addEventListener('dragleave', () => videoDrop.classList.remove('dragover'));
+  videoDrop.addEventListener('drop', (e) => { e.preventDefault(); videoDrop.classList.remove('dragover'); loadMyVideo(e.dataTransfer.files[0]); });
+  videoInput.addEventListener('change', (e) => { if (e.target.files[0]) loadMyVideo(e.target.files[0]); });
+
+  let myFrames = [];
+
+  function loadMyVideo(file) {
+    const blobUrl = URL.createObjectURL(file);
+    const video = document.getElementById('my-preview-video');
+    video.src = blobUrl;
+    video.onloadedmetadata = () => {
+      document.getElementById('my-video-meta').textContent = `${file.name} · ${Math.round(video.duration)}초 · ${video.videoWidth}x${video.videoHeight}`;
+    };
+    document.getElementById('my-video-wrap').style.display = 'block';
+    videoDrop.style.display = 'none';
+  }
+
+  function setMyProgress(pct, text) {
+    document.getElementById('my-progress-fill').style.width = pct + '%';
+    document.getElementById('my-status-text').textContent = text;
+  }
+
+  async function analyzeMyVideo() {
+    const apiKey = getApiKey();
+    if (!apiKey) { toast('설정에서 Claude API 키를 먼저 저장해주세요'); return; }
+
+    const video = document.getElementById('my-preview-video');
+    if (!video.src || !video.duration) { toast('먼저 영상을 업로드하세요'); return; }
+
+    document.getElementById('my-analyze-btn').disabled = true;
+    document.getElementById('my-result-section').style.display = 'none';
+    myFrames = [];
+    document.getElementById('my-status-box').style.display = 'block';
+    setMyProgress(5, '준비 중...');
+
+    try {
+      const count = Math.min(60, Math.max(10, Math.round(video.duration * 1)));
+      myFrames = await extractFrames(video, count, setMyProgress);
+
+      setMyProgress(60, 'AI 분석 중...');
+      const gridImg = await buildGrid(myFrames);
+      const b64 = gridImg.split(',')[1];
+
+      const apiRes = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true'
+        },
+        body: JSON.stringify({
+          model: 'claude-opus-4-5',
+          max_tokens: 512,
+          messages: [{
+            role: 'user',
+            content: [
+              { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: b64 } },
+              { type: 'text', text: `유튜브 쇼츠 영상에서 추출한 ${myFrames.length}개 프레임입니다. 각 프레임에 번호와 타임스탬프가 있습니다.
+
+썸네일로 가장 좋은 프레임 4개를 선택해주세요.
+
+선택 기준 (우선순위 순):
+1. 인물의 얼굴이 크고 선명하게 보이는 프레임
+2. 선명하고 밝은 화면
+3. 자막/텍스트/오버레이가 없는 깨끗한 프레임 우선 (자막 있으면 감점)
+4. 인물이 중앙에 있고 잘리지 않은 구도
+
+reason 작성 규칙 (매우 중요):
+- 프레임에 실제로 보이는 것만 묘사하세요.
+- 사람 얼굴이 안 보이면 "얼굴 안 보임"이라고 쓰세요.
+- 자막/텍스트가 보이면 반드시 "자막 있음"이라고 쓰세요.
+- 손만 보이면 "손만 보임"이라고 쓰세요.
+- "미소", "표정" 등은 얼굴이 실제로 선명하게 보일 때만 쓰세요.
+- 절대로 추측하거나 꾸며내지 마세요.
+
+JSON만 반환 (다른 텍스트 없이):
+{"picks":[{"rank":1,"frame":프레임번호,"reason":"실제 보이는 내용(25자이내)"},{"rank":2,"frame":프레임번호,"reason":"이유"},{"rank":3,"frame":프레임번호,"reason":"이유"},{"rank":4,"frame":프레임번호,"reason":"이유"}]}` }
+            ]
+          }]
+        })
+      });
+
+      const apiData = await apiRes.json();
+      if (apiData.error) throw new Error(apiData.error.message);
+      const raw = apiData.content[0].text.replace(/```json|```/g, '').trim();
+      const { picks } = JSON.parse(raw);
+
+      setMyProgress(100, '완료!');
+      setTimeout(() => {
+        document.getElementById('my-status-box').style.display = 'none';
+        renderMyResults(picks);
+      }, 400);
+
+    } catch(e) {
+      document.getElementById('my-status-box').style.display = 'none';
+      toast('분석 실패: ' + e.message);
+      console.error(e);
+    }
+    document.getElementById('my-analyze-btn').disabled = false;
+  }
+
+  function renderMyResults(picks) {
+    const grid = document.getElementById('my-result-grid');
+    grid.innerHTML = '';
+    picks.forEach(p => {
+      const frame = myFrames.find(f => f.index === p.frame);
+      if (!frame) return;
+      const div = document.createElement('div');
+      div.className = 'result-card' + (p.rank === 1 ? ' best' : '');
+      div.onclick = () => openModal(frame.dataUrl, frame.index, p.reason);
+      div.innerHTML = `
+        <div class="img-wrap">
+          <div class="result-rank">${p.rank === 1 ? 'BEST' : '#' + p.rank}</div>
+          <img src="${frame.dataUrl}">
+        </div>
+        <div class="result-meta">
+          <div class="result-reason">${p.reason}</div>
+        </div>`;
+      grid.appendChild(div);
+    });
+    document.getElementById('my-result-section').style.display = 'block';
+    document.getElementById('my-result-section').scrollIntoView({ behavior: 'smooth' });
+  }
+
+  function resetMyResults() {
+    document.getElementById('my-result-section').style.display = 'none';
+    myFrames = [];
+  }
+
+  // ── URL 판별 ──
+  function isYouTubeUrl(url) {
+    return /youtube\.com|youtu\.be/.test(url);
+  }
+
+  async function loadUrl() {
+    const url = document.getElementById('yt-url').value.trim();
+    if (!url) { toast('URL을 입력해주세요'); return; }
+
+    // 초기화
+    document.getElementById('video-wrap').style.display = 'none';
+    document.getElementById('article-wrap').style.display = 'none';
+
+    if (isYouTubeUrl(url)) {
+      loadVideo();
+    } else {
+      await loadArticle(url);
+    }
+  }
+
+  // ── 기사 본문 추출 ──
+  async function loadArticle(url) {
+    const btn = document.getElementById('load-btn');
+    btn.disabled = true;
+    btn.textContent = '추출 중...';
+    showLoading('기사 본문 추출 중', '페이지에서 텍스트를 가져오고 있어요', 30);
+
+    try {
+      const res = await fetch(`/api/article?url=${encodeURIComponent(url)}`);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || '기사 추출 실패 (' + res.status + ')');
+      }
+      const data = await res.json();
+      if (!data.body || data.body.length < 30) throw new Error('본문을 추출할 수 없습니다');
+
+      document.getElementById('article-source').textContent = data.title || url;
+      document.getElementById('article-content').textContent = data.body;
+      document.getElementById('article-wrap').style.display = 'block';
+
+      // 자막 섹션에 기사 본문 넣기 (대본 생성용)
+      document.getElementById('caption-content').textContent = data.body;
+      document.getElementById('caption-preview').textContent = data.body.slice(0, 60) + '...';
+      document.getElementById('caption-section').style.display = 'block';
+
+      hideLoading();
+      toast('기사 본문 추출 완료!');
+
+      // 프리셋 있으면 자동 대본 생성
+      showPresetSelect();
+      autoGenerateScript();
+
+    } catch(e) {
+      toast('기사 추출 실패: ' + e.message);
+      hideLoading();
+    }
+
+    btn.disabled = false;
+    btn.textContent = '불러오기';
+  }
+
+  // ── YouTube 영상 불러오기 ──
   async function loadVideo() {
     const url = document.getElementById('yt-url').value.trim();
     if (!url) { toast('URL을 입력해주세요'); return; }
@@ -274,6 +643,7 @@
     const btn = document.getElementById('load-btn');
     btn.disabled = true;
     btn.textContent = '불러오는 중...';
+    showLoading('영상 다운로드 중', 'YouTube에서 영상을 가져오고 있어요', 10);
 
     try {
       console.log('[영상] fetch 시작:', url);
@@ -296,17 +666,22 @@
 
       document.getElementById('video-wrap').style.display = 'block';
 
-      toast('✅ 영상 로드 완료! 🎙 음성 인식 버튼으로 스크립트를 추출할 수 있습니다.');
+      showLoading('영상 로드 완료', '음성 인식을 시작합니다', 30);
+
+      // 바로 음성 인식 시작
+      transcribeVideo();
     } catch(e) {
       toast('❌ ' + e.message);
+      hideLoading();
     }
 
     btn.disabled = false;
-    btn.textContent = '영상 불러오기';
+    btn.textContent = '불러오기';
   }
 
   // ── 프레임 추출 ──
-  function extractFrames(video, count) {
+  function extractFrames(video, count, progressFn) {
+    const onProgress = progressFn || setProgress;
     return new Promise(resolve => {
       const canvas = document.getElementById('canvas');
       const ctx = canvas.getContext('2d');
@@ -326,7 +701,7 @@
         ctx.drawImage(video, 0, 0);
         result.push({ index: idx + 1, time: times[idx], dataUrl: canvas.toDataURL('image/jpeg', 0.88) });
         idx++;
-        setProgress(10 + idx / times.length * 45, `프레임 추출 중... ${idx}/${times.length}`);
+        onProgress(10 + idx / times.length * 45, `프레임 추출 중... ${idx}/${times.length}`);
         next();
       };
 
@@ -368,7 +743,7 @@
 
   // ── 메인 분석 ──
   async function analyzeVideo() {
-    const apiKey = document.getElementById('api-key').value.trim();
+    const apiKey = getApiKey();
     if (!apiKey) { toast('Claude API 키를 입력해주세요'); return; }
 
     const video = document.getElementById('preview-video');
@@ -493,6 +868,30 @@ JSON만 반환 (다른 텍스트 없이):
     navigator.clipboard.writeText(el.textContent).then(() => toast('자막이 복사되었습니다'));
   }
 
+  function updateCaptionPreview() {
+    const text = document.getElementById('caption-content').textContent;
+    document.getElementById('caption-preview').textContent = text.slice(0, 60) + (text.length > 60 ? '...' : '');
+  }
+
+  function openCaptionModal() {
+    const text = document.getElementById('caption-content').textContent;
+    document.getElementById('caption-editor').value = text;
+    document.getElementById('caption-modal').classList.add('show');
+  }
+
+  function closeCaptionModal(e) {
+    if (e && e.target !== e.currentTarget) return;
+    document.getElementById('caption-modal').classList.remove('show');
+  }
+
+  function saveCaptionEdit() {
+    const text = document.getElementById('caption-editor').value;
+    document.getElementById('caption-content').textContent = text;
+    updateCaptionPreview();
+    closeCaptionModal();
+    toast('자막 수정됨');
+  }
+
   function saveFrame(dataUrl, idx) {
     const a = document.createElement('a');
     a.href = dataUrl;
@@ -505,8 +904,8 @@ JSON만 반환 (다른 텍스트 없이):
     frames = [];
   }
 
-  // ── 음성 인식 (Whisper in browser) ──
-  let whisperPipeline = null;
+  // ── 음성 인식 (Whisper in Web Worker) ──
+  let whisperWorker = null;
 
   async function transcribeVideo() {
     const video = document.getElementById('preview-video');
@@ -514,31 +913,18 @@ JSON만 반환 (다른 텍스트 없이):
 
     const btn = document.getElementById('stt-btn');
     btn.disabled = true;
+    btn.textContent = '오디오 추출...';
 
     document.getElementById('caption-section').style.display = 'block';
+    document.getElementById('caption-content').textContent = '영상에서 오디오 추출 중...';
 
     try {
-      // 1. Whisper 모델 로드 (첫 실행 시 다운로드 ~40MB)
-      if (!whisperPipeline) {
-        btn.textContent = '모델 로딩...';
-        document.getElementById('caption-content').textContent = 'Whisper 모델 다운로드 중... (첫 실행만, ~40MB)';
-        const { pipeline } = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3');
-        whisperPipeline = await pipeline('automatic-speech-recognition', 'onnx-community/whisper-small', {
-          dtype: 'q4',
-          device: 'wasm',
-        });
-      }
-
-      // 2. 영상에서 오디오 추출 (16kHz mono PCM)
-      btn.textContent = '오디오 추출...';
-      document.getElementById('caption-content').textContent = '영상에서 오디오 추출 중...';
-
+      // 1. 오디오 추출 (메인 스레드에서 - AudioContext는 Worker에서 못 씀)
       const audioCtx = new OfflineAudioContext(1, 16000 * Math.ceil(video.duration), 16000);
       const response = await fetch(video.src);
       const arrayBuffer = await response.arrayBuffer();
       const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
 
-      // 16kHz로 리샘플링
       const source = audioCtx.createBufferSource();
       source.buffer = audioBuffer;
       source.connect(audioCtx.destination);
@@ -546,42 +932,604 @@ JSON만 반환 (다른 텍스트 없이):
       const rendered = await audioCtx.startRendering();
       const audioData = rendered.getChannelData(0);
 
-      // 3. Whisper로 음성 인식
-      btn.textContent = '음성 인식 중...';
-      document.getElementById('caption-content').textContent = '음성 인식 중... (30초~1분 소요)';
-
-      const result = await whisperPipeline(audioData, {
-        language: 'korean',
-        task: 'transcribe',
-        return_timestamps: true,
-        chunk_length_s: 30,
-        stride_length_s: 5,
-      });
-
-      console.log('[STT] 결과:', result);
-
-      // 4. 결과 표시
-      if (result.chunks && result.chunks.length) {
-        const html = result.chunks.map(c => {
-          const sec = Math.floor(c.timestamp[0]);
-          return `<span style="color:var(--muted);font-size:11px;">${sec}s</span> ${c.text.trim()}`;
-        }).join('<br>');
-        document.getElementById('caption-content').innerHTML = html;
-      } else if (result.text) {
-        document.getElementById('caption-content').textContent = result.text;
-      } else {
-        document.getElementById('caption-content').textContent = '인식된 음성이 없습니다.';
+      // 2. Worker로 Whisper 처리 넘기기
+      if (!whisperWorker) {
+        whisperWorker = new Worker('/whisper-worker.js', { type: 'module' });
       }
-      toast('음성 인식 완료!');
+
+      btn.textContent = '음성 인식 중...';
+      showLoading('음성 인식 준비 중', 'Whisper 모델을 불러오고 있어요 (첫 실행만 오래 걸려요)', 40);
+
+      whisperWorker.onmessage = (e) => {
+        const { type, text, result, message } = e.data;
+
+        if (type === 'status') {
+          const isFetching = text.includes('다운로드');
+          const isRecognizing = text.includes('인식 중');
+          showLoading(
+            isFetching ? '모델 다운로드 중' : isRecognizing ? '음성 인식 중' : '처리 중',
+            isFetching ? '약 40MB, 첫 실행만 필요해요' : isRecognizing ? '잠시만 기다려주세요...' : text,
+            isFetching ? 50 : isRecognizing ? 70 : 60
+          );
+        } else if (type === 'result') {
+          console.log('[STT] 결과:', result);
+          if (result.chunks && result.chunks.length) {
+            const html = result.chunks.map(c => {
+              const sec = Math.floor(c.timestamp[0]);
+              return `<span style="color:var(--muted);font-size:11px;">${sec}s</span> ${c.text.trim()}`;
+            }).join('<br>');
+            document.getElementById('caption-content').innerHTML = html;
+          } else if (result.text) {
+            document.getElementById('caption-content').textContent = result.text;
+          } else {
+            document.getElementById('caption-content').textContent = '인식된 음성이 없습니다.';
+          }
+          showLoading('대본 생성 준비', '스크립트 추출 완료!', 90);
+          updateCaptionPreview();
+          toast('음성 인식 완료!');
+          showPresetSelect();
+          btn.disabled = false;
+          btn.textContent = '🎙 음성 인식';
+          // 프리셋 있으면 자동 대본 생성
+          autoGenerateScript();
+        } else if (type === 'error') {
+          document.getElementById('caption-content').textContent = '음성 인식 실패: ' + message;
+          toast('음성 인식 실패');
+          hideLoading();
+          btn.disabled = false;
+          btn.textContent = '🎙 음성 인식';
+        }
+      };
+
+      // Float32Array는 transferable
+      const audioArr = new Float32Array(audioData);
+      whisperWorker.postMessage({ type: 'transcribe', audioData: audioArr }, [audioArr.buffer]);
 
     } catch(e) {
       console.error('[STT] 에러:', e);
       document.getElementById('caption-content').textContent = '음성 인식 실패: ' + e.message;
       toast('음성 인식 실패');
+      btn.disabled = false;
+      btn.textContent = '🎙 음성 인식';
+    }
+  }
+
+  // ── 프리셋 드롭다운 표시 ──
+  function showPresetSelect() {
+    const presets = JSON.parse(localStorage.getItem('script_presets') || '[]');
+    const ready = presets.filter(p => p.styleGuide);
+    if (!ready.length) return;
+
+    const select = document.getElementById('preset-select');
+    select.innerHTML = '';
+    presets.forEach((p, i) => {
+      if (!p.styleGuide) return;
+      const opt = document.createElement('option');
+      opt.value = i;
+      opt.textContent = p.name || `프리셋 ${i + 1}`;
+      select.appendChild(opt);
+    });
+    select.style.display = 'inline-block';
+    document.getElementById('gen-script-btn').style.display = 'inline-block';
+  }
+
+  // ── 자동 대본 생성 ──
+  function autoGenerateScript() {
+    const presets = JSON.parse(localStorage.getItem('script_presets') || '[]');
+    const ready = presets.filter(p => p.styleGuide);
+    if (!ready.length || !getApiKey()) return;
+
+    // 프리셋 1개면 바로 생성, 여러개면 선택 대기
+    if (ready.length === 1) {
+      const idx = presets.indexOf(ready[0]);
+      document.getElementById('preset-select').value = idx;
+      generateFromTranscript();
+    }
+    // 여러 개면 드롭다운 보여주고 사용자가 선택 후 버튼 클릭
+  }
+
+  // ── 스크립트 → 대본 생성 ──
+  async function generateFromTranscript() {
+    const apiKey = getApiKey();
+    if (!apiKey) { toast('설정에서 Claude API 키를 먼저 저장해주세요'); return; }
+
+    const presets = JSON.parse(localStorage.getItem('script_presets') || '[]');
+    const idx = parseInt(document.getElementById('preset-select').value);
+    const preset = presets[idx];
+    if (!preset || !preset.styleGuide) { toast('먼저 대본 작성 페이지에서 표본을 분석해주세요'); return; }
+
+    const styleGuide = preset.styleGuide;
+    const samples = preset.samples || [];
+
+    const transcript = document.getElementById('caption-content').textContent;
+    if (!transcript || transcript.length < 10) { toast('인식된 스크립트가 없습니다'); return; }
+
+    const btn = document.getElementById('gen-script-btn');
+    btn.disabled = true;
+    btn.textContent = '생성 중...';
+
+    document.getElementById('script-section').style.display = 'block';
+    document.getElementById('script-content').textContent = '대본 생성 중...';
+
+    try {
+      const samplesText = samples.map((s, i) => `[표본 ${i + 1}]\n${s}`).join('\n\n---\n\n');
+
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true'
+        },
+        body: JSON.stringify({
+          model: 'claude-opus-4-5',
+          max_tokens: 4096,
+          messages: [{
+            role: 'user',
+            content: `당신은 유튜브 쇼츠 대본 작가입니다. 아래 스타일 가이드와 표본을 정확히 따라서 대본을 작성해주세요.
+
+[스타일 가이드]
+${styleGuide}
+
+[표본 대본]
+${samplesText}
+
+[원본 영상 스크립트]
+${transcript}
+
+위 원본 영상 스크립트의 내용을 바탕으로, 스타일 가이드와 표본의 말투/구조/길이/표현방식을 최대한 똑같이 따라해서 새로운 대본을 작성해주세요.
+대본만 출력하세요. 설명이나 제목 없이 바로 대본 내용만.`
+          }]
+        })
+      });
+
+      const data = await res.json();
+      if (data.error) throw new Error(data.error.message);
+
+      document.getElementById('script-content').textContent = data.content[0].text;
+      toast('대본 생성 완료!');
+      showTTSControls();
+
+    } catch(e) {
+      document.getElementById('script-content').textContent = '대본 생성 실패: ' + e.message;
+      toast('대본 생성 실패');
+      console.error(e);
     }
 
     btn.disabled = false;
-    btn.textContent = '🎙 음성 인식';
+    btn.textContent = '대본 생성';
+  }
+
+  function copyScript() {
+    const text = document.getElementById('script-content').textContent;
+    navigator.clipboard.writeText(text).then(() => toast('대본이 복사되었습니다'));
+  }
+
+  // ── TTS (ElevenLabs + Typecast) ──
+  let ttsAudioUrl = null;
+  let ttsSrtData = null;
+  let selectedVoice = null;
+  let voicesData = [];
+  let previewAudio = null;
+  let currentTTSService = 'eleven';
+  let elevenVoicesCache = null;
+  let typecastVoicesCache = null;
+
+  function getTypecastKey() { return localStorage.getItem('typecast_api_key') || ''; }
+
+  function showTTSControls() {
+    if (getElevenKey() || getTypecastKey()) {
+      document.getElementById('tts-controls').style.display = 'block';
+      if (getElevenKey()) switchTTSService('eleven');
+      else switchTTSService('typecast');
+    }
+  }
+
+  function switchTTSService(service) {
+    currentTTSService = service;
+    selectedVoice = null;
+
+    const elTab = document.getElementById('tts-tab-eleven');
+    const tcTab = document.getElementById('tts-tab-typecast');
+    elTab.style.borderColor = service === 'eleven' ? 'var(--accent)' : 'var(--border)';
+    elTab.style.color = service === 'eleven' ? 'var(--accent)' : 'var(--muted2)';
+    tcTab.style.borderColor = service === 'typecast' ? 'var(--accent)' : 'var(--border)';
+    tcTab.style.color = service === 'typecast' ? 'var(--accent)' : 'var(--muted2)';
+
+    document.getElementById('tc-emotion').style.display = service === 'typecast' ? 'inline-block' : 'none';
+    document.getElementById('srt-download-btn').style.display = 'inline-block';
+
+    const btn = document.getElementById('voice-picker-btn');
+    btn.innerHTML = '<span class="placeholder">?</span><span>목소리를 선택하세요</span>';
+    document.getElementById('voice-panel').style.display = 'none';
+    document.getElementById('tts-audio').style.display = 'none';
+    document.getElementById('tts-download').style.display = 'none';
+
+    if (service === 'eleven') loadElevenVoices();
+    else loadTypecastVoices();
+  }
+
+  async function loadElevenVoices() {
+    const apiKey = getElevenKey();
+    if (!apiKey) { toast('설정에서 ElevenLabs API 키를 먼저 저장해주세요'); return; }
+    if (elevenVoicesCache) { voicesData = elevenVoicesCache; renderVoiceGrid(); return; }
+
+    try {
+      const res = await fetch('https://api.elevenlabs.io/v1/voices', { headers: { 'xi-api-key': apiKey } });
+      if (!res.ok) throw new Error('ElevenLabs 목소리 불러오기 실패 (' + res.status + ')');
+      const data = await res.json();
+      voicesData = data.voices.filter(v => v.category !== 'premade');
+      elevenVoicesCache = voicesData;
+      renderVoiceGrid();
+    } catch(e) { toast('❌ ' + e.message); console.error(e); }
+  }
+
+  async function loadTypecastVoices() {
+    const apiKey = getTypecastKey();
+    if (!apiKey) { toast('설정에서 Typecast API 키를 먼저 저장해주세요'); return; }
+    if (typecastVoicesCache) { voicesData = typecastVoicesCache; renderVoiceGrid(); return; }
+
+    try {
+      const res = await fetch('https://api.typecast.ai/v2/voices?model=ssfm-v30', { headers: { 'X-API-KEY': apiKey } });
+      if (!res.ok) throw new Error('Typecast 목소리 불러오기 실패 (' + res.status + ')');
+      const data = await res.json();
+      const raw = data.voices || data.result || data;
+      voicesData = (Array.isArray(raw) ? raw : []).map(v => ({
+        voice_id: v.voice_id,
+        name: v.voice_name || v.name,
+        category: 'typecast',
+        labels: { gender: v.gender, age: v.age, use_case: (v.use_cases||[])[0] || '' },
+        preview_url: v.preview_url || v.sample_url || '',
+        image_url: v.image_url || v.profile_image_url || v.thumbnail_url || '',
+        description: v.description || '',
+        _service: 'typecast'
+      }));
+      typecastVoicesCache = voicesData;
+      renderVoiceGrid();
+    } catch(e) { toast('❌ ' + e.message); console.error(e); }
+  }
+
+  function renderVoiceGrid() {
+    const grid = document.getElementById('voice-grid');
+    grid.innerHTML = '';
+
+    if (voicesData.length === 0) {
+      grid.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted);font-size:13px;">목소리가 없습니다</div>';
+      return;
+    }
+
+    voicesData.forEach(v => {
+      const labels = v.labels || {};
+      const tags = [];
+      if (currentTTSService === 'eleven') {
+        if (v.category === 'cloned') tags.push('클론');
+        else if (v.category === 'generated') tags.push('생성');
+      }
+      if (labels.gender) tags.push(labels.gender);
+      if (labels.accent) tags.push(labels.accent);
+      if (labels.age) tags.push(labels.age);
+      if (labels.use_case) tags.push(labels.use_case);
+
+      const imgUrl = currentTTSService === 'eleven'
+        ? (v.sharing?.image_url || v.sharing?.avatar_url || '')
+        : (v.image_url || '');
+      const isSelected = selectedVoice && selectedVoice.voice_id === v.voice_id;
+      const prevUrl = v.preview_url || '';
+
+      const card = document.createElement('div');
+      card.className = 'voice-card' + (isSelected ? ' selected' : '');
+      card.innerHTML = `
+        ${imgUrl
+          ? `<img class="voice-card-img" src="${imgUrl}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" alt="${v.name}"><div class="voice-card-img" style="display:none;align-items:center;justify-content:center;font-size:18px;color:var(--muted);">♪</div>`
+          : `<div class="voice-card-img" style="display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--muted);">♪</div>`
+        }
+        <div class="voice-card-info">
+          <div class="voice-card-name">${v.name}</div>
+          <div class="voice-card-meta">
+            ${tags.map(t => `<span class="voice-card-badge">${t}</span>`).join('')}
+          </div>
+          ${v.description ? `<div style="font-size:10px;color:var(--muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${v.description}</div>` : ''}
+        </div>
+        ${prevUrl ? `<button class="voice-card-preview" onclick="event.stopPropagation();previewVoice('${prevUrl}')" title="미리듣기">▶</button>` : ''}
+      `;
+      card.onclick = () => selectVoice(v);
+      grid.appendChild(card);
+    });
+  }
+
+  function selectVoice(v) {
+    selectedVoice = v;
+    const btn = document.getElementById('voice-picker-btn');
+    const imgUrl = currentTTSService === 'eleven'
+      ? (v.sharing?.image_url || v.sharing?.avatar_url || '')
+      : (v.image_url || '');
+    btn.innerHTML = imgUrl
+      ? `<img src="${imgUrl}" onerror="this.outerHTML='<span class=\\'placeholder\\'>♪</span>'" alt="${v.name}"><span>${v.name}</span>`
+      : `<span class="placeholder">♪</span><span>${v.name}</span>`;
+    document.getElementById('voice-panel').style.display = 'none';
+    renderVoiceGrid();
+  }
+
+  function toggleVoicePanel() {
+    const panel = document.getElementById('voice-panel');
+    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+  }
+
+  function previewVoice(url) {
+    if (previewAudio) { previewAudio.pause(); previewAudio = null; }
+    previewAudio = new Audio(url);
+    previewAudio.play();
+  }
+
+  async function generateTTS() {
+    if (!selectedVoice) { toast('목소리를 선택해주세요'); return; }
+    const text = document.getElementById('script-content').textContent;
+    if (!text || text.length < 5) { toast('생성된 대본이 없습니다'); return; }
+
+    const btn = document.getElementById('tts-btn');
+    btn.disabled = true;
+    btn.textContent = '생성 중...';
+
+    try {
+      if (currentTTSService === 'eleven') await generateElevenTTS(text);
+      else await generateTypecastTTS(text);
+    } catch(e) {
+      toast('❌ ' + e.message);
+      console.error(e);
+    }
+
+    btn.disabled = false;
+    btn.textContent = '음성 생성';
+  }
+
+  // ── ElevenLabs TTS ──
+  async function generateElevenTTS(text) {
+    const apiKey = getElevenKey();
+    if (!apiKey) throw new Error('ElevenLabs API 키가 없습니다');
+
+    const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${selectedVoice.voice_id}/with-timestamps`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'xi-api-key': apiKey },
+      body: JSON.stringify({ text, model_id: 'eleven_multilingual_v2', voice_settings: { stability: 0.5, similarity_boost: 0.75 } })
+    });
+    if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.detail?.message || '음성 생성 실패 (' + res.status + ')'); }
+
+    const data = await res.json();
+    const audioBytes = Uint8Array.from(atob(data.audio_base64), c => c.charCodeAt(0));
+    const { characters: chars, character_start_times_seconds: starts, character_end_times_seconds: ends } = data.alignment;
+
+    // 긴 공백 트리밍
+    const MAX_PAUSE = 1.0, REPLACE_PAUSE = 0.3;
+    const pauses = [];
+    for (let i = 1; i < chars.length; i++) {
+      const gap = starts[i] - ends[i - 1];
+      if (gap > MAX_PAUSE) pauses.push({ index: i, gapStart: ends[i - 1], gapEnd: starts[i], gap });
+    }
+
+    let finalBlob, adjStarts = starts, adjEnds = ends;
+
+    if (pauses.length > 0) {
+      const audioCtx = new AudioContext();
+      const origBuffer = await audioCtx.decodeAudioData(audioBytes.buffer.slice(0));
+      const sr = origBuffer.sampleRate, numCh = origBuffer.numberOfChannels;
+
+      const segments = []; let segStart = 0;
+      for (const p of pauses) { segments.push({ s: segStart, e: p.gapStart + REPLACE_PAUSE/2 }); segStart = p.gapEnd - REPLACE_PAUSE/2; }
+      segments.push({ s: segStart, e: origBuffer.duration });
+
+      let trimmed = 0; for (const p of pauses) trimmed += (p.gap - REPLACE_PAUSE);
+      const offCtx = new OfflineAudioContext(numCh, Math.ceil((origBuffer.duration - trimmed) * sr), sr);
+      let dt = 0;
+      for (const seg of segments) { const d = seg.e - seg.s; if (d <= 0) continue; const src = offCtx.createBufferSource(); src.buffer = origBuffer; src.connect(offCtx.destination); src.start(dt, seg.s, d); dt += d; }
+      finalBlob = audioBufferToWav(await offCtx.startRendering());
+      audioCtx.close();
+
+      adjStarts = [...starts]; adjEnds = [...ends];
+      let off = 0, pi = 0;
+      for (let i = 0; i < chars.length; i++) { while (pi < pauses.length && i >= pauses[pi].index) { off += (pauses[pi].gap - REPLACE_PAUSE); pi++; } adjStarts[i] = starts[i] - off; adjEnds[i] = ends[i] - off; }
+      console.log(`[TTS] 공백 ${pauses.length}곳 트리밍 (${trimmed.toFixed(1)}초 단축)`);
+    } else {
+      finalBlob = new Blob([audioBytes], { type: 'audio/mpeg' });
+    }
+
+    ttsSrtData = buildSRT(chars, adjStarts, adjEnds);
+    showTTSResult(finalBlob, pauses.length > 0 ? `음성 생성 완료! (공백 ${pauses.length}곳 트리밍)` : '음성 생성 완료!');
+  }
+
+  // ── Typecast TTS ──
+  async function generateTypecastTTS(text) {
+    const apiKey = getTypecastKey();
+    if (!apiKey) throw new Error('Typecast API 키가 없습니다');
+
+    const emotion = document.getElementById('tc-emotion').value;
+    const res = await fetch('https://api.typecast.ai/v1/text-to-speech', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-API-KEY': apiKey },
+      body: JSON.stringify({ text, model: 'ssfm-v30', voice_id: selectedVoice.voice_id, prompt: { emotion_type: emotion } })
+    });
+    if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.message || e.detail || '음성 생성 실패 (' + res.status + ')'); }
+
+    const blob = await res.blob();
+
+    // 오디오 길이 측정 후 텍스트 기반 SRT 생성
+    const tempUrl = URL.createObjectURL(blob);
+    const duration = await getAudioDuration(tempUrl);
+    URL.revokeObjectURL(tempUrl);
+    ttsSrtData = buildSRTFromText(text, duration);
+
+    showTTSResult(blob, '음성 생성 완료!');
+  }
+
+  function getAudioDuration(url) {
+    return new Promise((resolve) => {
+      const a = new Audio();
+      a.addEventListener('loadedmetadata', () => resolve(a.duration));
+      a.addEventListener('error', () => resolve(0));
+      a.src = url;
+    });
+  }
+
+  // 텍스트 기반 SRT (타임스탬프 없을 때 - 문장별 균등 분배)
+  function buildSRTFromText(text, duration) {
+    if (!duration) return null;
+    // 문장 분리
+    const raw = text.split(/(?<=[.!?。！？\n])\s*/g).map(s => s.trim()).filter(s => s.length > 0);
+    // 문장이 없으면 줄바꿈으로 분리
+    const sentences = raw.length > 1 ? raw : text.split('\n').map(s => s.trim()).filter(s => s.length > 0);
+    if (!sentences.length) return null;
+
+    // 글자 수 비율로 시간 배분 (문장 사이 0.1초 간격)
+    const GAP = 0.1;
+    const totalGap = GAP * (sentences.length - 1);
+    const speechTime = Math.max(0, duration - totalGap);
+    const totalChars = sentences.reduce((sum, s) => sum + s.length, 0);
+    let time = 0;
+    const entries = sentences.map((s, i) => {
+      const start = time;
+      const dur = (s.length / totalChars) * speechTime;
+      time += dur;
+      const end = time;
+      if (i < sentences.length - 1) time += GAP;
+      return { text: s, start, end };
+    });
+
+    // 40자 초과 분할
+    const final = [];
+    for (const e of entries) {
+      if (e.text.length <= 40) { final.push(e); continue; }
+      const mid = Math.ceil(e.text.length / 2);
+      const sp = e.text.indexOf(' ', mid - 10);
+      const idx = sp > 0 ? sp : mid;
+      const midTime = e.start + (e.end - e.start) * (idx / e.text.length);
+      final.push({ text: e.text.slice(0, idx).trim(), start: e.start, end: midTime });
+      final.push({ text: e.text.slice(idx).trim(), start: midTime, end: e.end });
+    }
+
+    return final.map((s, i) => `${i + 1}\n${fmtSrtTime(s.start)} --> ${fmtSrtTime(s.end)}\n${s.text}`).join('\n\n');
+  }
+
+  function showTTSResult(blob, msg) {
+    if (ttsAudioUrl) URL.revokeObjectURL(ttsAudioUrl);
+    ttsAudioUrl = URL.createObjectURL(blob);
+    document.getElementById('tts-audio').src = ttsAudioUrl;
+    document.getElementById('tts-audio').style.display = 'block';
+    document.getElementById('tts-download').style.display = 'flex';
+    toast(msg);
+  }
+
+  // SRT 생성: 문장 단위로 자막 분할
+  function buildSRT(chars, starts, ends) {
+    // 캐릭터를 문장 단위로 그룹핑
+    const sentences = [];
+    let cur = { text: '', start: null, end: null };
+
+    for (let i = 0; i < chars.length; i++) {
+      if (cur.start === null) cur.start = starts[i];
+      cur.text += chars[i];
+      cur.end = ends[i];
+
+      // 문장 끝 감지: .!? 또는 줄바꿈, 또는 긴 공백
+      const isEnd = /[.!?。！？\n]/.test(chars[i]);
+      const hasGap = i < chars.length - 1 && (starts[i + 1] - ends[i]) > 0.5;
+
+      if ((isEnd || hasGap) && cur.text.trim().length > 0) {
+        sentences.push({ text: cur.text.trim(), start: cur.start, end: cur.end });
+        cur = { text: '', start: null, end: null };
+      }
+    }
+    if (cur.text.trim().length > 0) {
+      sentences.push({ text: cur.text.trim(), start: cur.start, end: cur.end });
+    }
+
+    // 너무 긴 자막은 분할 (40자 초과 시)
+    const final = [];
+    for (const s of sentences) {
+      if (s.text.length <= 40) {
+        final.push(s);
+      } else {
+        const mid = Math.ceil(s.text.length / 2);
+        const splitAt = s.text.indexOf(' ', mid - 10);
+        const idx = splitAt > 0 ? splitAt : mid;
+        const midTime = s.start + (s.end - s.start) * (idx / s.text.length);
+        final.push({ text: s.text.slice(0, idx).trim(), start: s.start, end: midTime });
+        final.push({ text: s.text.slice(idx).trim(), start: midTime, end: s.end });
+      }
+    }
+
+    // SRT 포맷
+    return final.map((s, i) => {
+      return `${i + 1}\n${fmtSrtTime(s.start)} --> ${fmtSrtTime(s.end)}\n${s.text}`;
+    }).join('\n\n');
+  }
+
+  function fmtSrtTime(sec) {
+    const h = Math.floor(sec / 3600);
+    const m = Math.floor((sec % 3600) / 60);
+    const s = Math.floor(sec % 60);
+    const ms = Math.round((sec % 1) * 1000);
+    return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')},${String(ms).padStart(3,'0')}`;
+  }
+
+  // WAV 인코더 (트리밍된 오디오용)
+  function audioBufferToWav(buffer) {
+    const numCh = buffer.numberOfChannels;
+    const sr = buffer.sampleRate;
+    const format = 1; // PCM
+    const bitsPerSample = 16;
+    const samples = buffer.length;
+    const byteRate = sr * numCh * bitsPerSample / 8;
+    const blockAlign = numCh * bitsPerSample / 8;
+    const dataSize = samples * blockAlign;
+    const headerSize = 44;
+    const buf = new ArrayBuffer(headerSize + dataSize);
+    const view = new DataView(buf);
+
+    const writeStr = (offset, str) => { for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i)); };
+    writeStr(0, 'RIFF');
+    view.setUint32(4, 36 + dataSize, true);
+    writeStr(8, 'WAVE');
+    writeStr(12, 'fmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, format, true);
+    view.setUint16(22, numCh, true);
+    view.setUint32(24, sr, true);
+    view.setUint32(28, byteRate, true);
+    view.setUint16(32, blockAlign, true);
+    view.setUint16(34, bitsPerSample, true);
+    writeStr(36, 'data');
+    view.setUint32(40, dataSize, true);
+
+    const channels = [];
+    for (let ch = 0; ch < numCh; ch++) channels.push(buffer.getChannelData(ch));
+
+    let offset = 44;
+    for (let i = 0; i < samples; i++) {
+      for (let ch = 0; ch < numCh; ch++) {
+        const s = Math.max(-1, Math.min(1, channels[ch][i]));
+        view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+        offset += 2;
+      }
+    }
+
+    return new Blob([buf], { type: 'audio/wav' });
+  }
+
+  function downloadTTS() {
+    if (!ttsAudioUrl) return;
+    const a = document.createElement('a');
+    a.href = ttsAudioUrl;
+    a.download = currentTTSService === 'typecast' ? 'tts_audio.wav' : 'tts_audio.mp3';
+    a.click();
+  }
+
+  function downloadSRT() {
+    if (!ttsSrtData) { toast('SRT 데이터가 없습니다'); return; }
+    const blob = new Blob([ttsSrtData], { type: 'text/srt' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'tts_subtitle.srt';
+    a.click();
   }
 </script>
 </body>
