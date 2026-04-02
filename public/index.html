@@ -666,10 +666,8 @@ JSON만 반환 (다른 텍스트 없이):
 
       document.getElementById('video-wrap').style.display = 'block';
 
-      showLoading('영상 로드 완료', '음성 인식을 시작합니다', 30);
-
-      // 바로 음성 인식 시작
-      transcribeVideo();
+      hideLoading();
+      toast('영상 불러오기 완료!');
     } catch(e) {
       toast('❌ ' + e.message);
       hideLoading();
@@ -1160,9 +1158,16 @@ ${transcript}
       if (!res.ok) throw new Error('ElevenLabs 목소리 불러오기 실패 (' + res.status + ')');
       const data = await res.json();
       voicesData = data.voices.filter(v => v.category !== 'premade');
+      console.log('[ElevenLabs] 목소리 목록:', voicesData);
       elevenVoicesCache = voicesData;
       renderVoiceGrid();
     } catch(e) { toast('❌ ' + e.message); console.error(e); }
+  }
+
+  // ElevenLabs 이미지 URL 추출 (여러 필드 시도)
+  function getElevenImage(v) {
+    return v.preview_image_url || v.image_url || v.avatar_url
+      || v.sharing?.image_url || v.sharing?.avatar_url || '';
   }
 
   async function loadTypecastVoices() {
@@ -1171,19 +1176,25 @@ ${transcript}
     if (typecastVoicesCache) { voicesData = typecastVoicesCache; renderVoiceGrid(); return; }
 
     try {
-      const res = await fetch('https://api.typecast.ai/v2/voices?model=ssfm-v30', { headers: { 'X-API-KEY': apiKey } });
+      const res = await fetch('https://api.typecast.ai/v2/voices?model=ssfm-v30&language=ko', { headers: { 'X-API-KEY': apiKey } });
       if (!res.ok) throw new Error('Typecast 목소리 불러오기 실패 (' + res.status + ')');
       const data = await res.json();
       const raw = data.voices || data.result || data;
+      console.log('[Typecast] 원본 응답:', raw);
       voicesData = (Array.isArray(raw) ? raw : []).map(v => ({
         voice_id: v.voice_id,
         name: v.voice_name || v.name,
         category: 'typecast',
-        labels: { gender: v.gender, age: v.age, use_case: (v.use_cases||[])[0] || '' },
+        labels: {
+          gender: v.gender === 'male' ? '남성' : v.gender === 'female' ? '여성' : v.gender || '',
+          age: v.age === 'adult' ? '성인' : v.age === 'child' ? '아이' : v.age === 'senior' ? '노인' : v.age === 'young_adult' ? '청년' : v.age || '',
+          use_case: ((v.use_cases||[])[0] || '').replace('narration','나레이션').replace('conversation','대화').replace('news','뉴스').replace('audiobook','오디오북')
+        },
         preview_url: v.preview_url || v.sample_url || '',
-        image_url: v.image_url || v.profile_image_url || v.thumbnail_url || '',
+        image_url: v.image_url || v.profile_image_url || v.thumbnail_url || v.avatar_url || '',
         description: v.description || '',
-        _service: 'typecast'
+        _service: 'typecast',
+        _raw: v
       }));
       typecastVoicesCache = voicesData;
       renderVoiceGrid();
@@ -1211,9 +1222,7 @@ ${transcript}
       if (labels.age) tags.push(labels.age);
       if (labels.use_case) tags.push(labels.use_case);
 
-      const imgUrl = currentTTSService === 'eleven'
-        ? (v.sharing?.image_url || v.sharing?.avatar_url || '')
-        : (v.image_url || '');
+      const imgUrl = currentTTSService === 'eleven' ? getElevenImage(v) : (v.image_url || '');
       const isSelected = selectedVoice && selectedVoice.voice_id === v.voice_id;
       const prevUrl = v.preview_url || '';
 
@@ -1241,9 +1250,7 @@ ${transcript}
   function selectVoice(v) {
     selectedVoice = v;
     const btn = document.getElementById('voice-picker-btn');
-    const imgUrl = currentTTSService === 'eleven'
-      ? (v.sharing?.image_url || v.sharing?.avatar_url || '')
-      : (v.image_url || '');
+    const imgUrl = currentTTSService === 'eleven' ? getElevenImage(v) : (v.image_url || '');
     btn.innerHTML = imgUrl
       ? `<img src="${imgUrl}" onerror="this.outerHTML='<span class=\\'placeholder\\'>♪</span>'" alt="${v.name}"><span>${v.name}</span>`
       : `<span class="placeholder">♪</span><span>${v.name}</span>`;
