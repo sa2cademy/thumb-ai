@@ -246,6 +246,17 @@
         </div>
         <p class="note">YouTube → 영상 음성 인식 · 기사 URL → 본문 추출 → 대본 생성</p>
 
+        <!-- 영상 파일 드롭존 (서버 다운로드 실패 시 표시) -->
+        <div id="video-drop-zone" style="display:none;margin-top:12px;border:2px dashed var(--border);border-radius:var(--radius);padding:28px 16px;text-align:center;cursor:pointer;transition:all 0.2s;"
+          ondragover="event.preventDefault();this.style.borderColor='var(--accent)';this.style.color='var(--accent)'"
+          ondragleave="this.style.borderColor='var(--border)';this.style.color='var(--muted2)'"
+          ondrop="event.preventDefault();this.style.borderColor='var(--border)';this.style.color='var(--muted2)';handleVideoDrop(event)"
+          onclick="document.getElementById('video-file-input').click()">
+          <div style="font-size:13px;color:var(--muted2);font-weight:600;margin-bottom:6px;">서버 다운로드가 안 돼요</div>
+          <div style="font-size:12px;color:var(--muted);">영상 파일을 여기에 드래그하거나 클릭해서 선택하세요</div>
+          <input type="file" id="video-file-input" accept="video/*" style="display:none;" onchange="handleVideoFile(event)">
+        </div>
+
         <div id="video-wrap">
           <video id="preview-video" controls playsinline muted></video>
           <div class="video-info">
@@ -725,12 +736,41 @@ JSON만 반환 (다른 텍스트 없이):
       toast('영상 불러오기 완료!');
       document.getElementById('stt-btn').classList.add('btn-glow');
     } catch(e) {
-      toast('❌ ' + e.message);
+      console.error('[영상] 다운로드 실패:', e.message);
       hideLoading();
+      // 드롭존 표시
+      document.getElementById('video-drop-zone').style.display = 'block';
+      toast('서버 다운로드 실패 - 영상 파일을 직접 올려주세요');
     }
 
     btn.disabled = false;
     btn.textContent = '불러오기';
+  }
+
+  // ── 영상 파일 직접 업로드 ──
+  function handleVideoFile(e) {
+    const file = e.target.files[0];
+    if (file) loadVideoFromFile(file);
+    e.target.value = '';
+  }
+
+  function handleVideoDrop(e) {
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('video/')) loadVideoFromFile(file);
+    else toast('영상 파일만 올릴 수 있습니다');
+  }
+
+  function loadVideoFromFile(file) {
+    const blobUrl = URL.createObjectURL(file);
+    const video = document.getElementById('preview-video');
+    video.src = blobUrl;
+    video.onloadedmetadata = () => {
+      document.getElementById('video-meta').textContent = `${file.name} · ${Math.round(video.duration)}초 · ${video.videoWidth}×${video.videoHeight}`;
+    };
+    document.getElementById('video-wrap').style.display = 'block';
+    document.getElementById('video-drop-zone').style.display = 'none';
+    toast('영상 로드 완료!');
+    document.getElementById('stt-btn').classList.add('btn-glow');
   }
 
   // ── 프레임 추출 ──
