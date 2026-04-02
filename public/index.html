@@ -359,8 +359,8 @@
     <div id="tts-controls" style="display:none;margin-top:14px;">
       <!-- 서비스 선택 탭 -->
       <div style="display:flex;gap:0;margin-bottom:10px;">
-        <button class="caption-copy" id="tts-tab-eleven" onclick="switchTTSService('eleven')" style="border-radius:4px 0 0 4px;border-right:none;padding:6px 14px;">ElevenLabs</button>
-        <button class="caption-copy" id="tts-tab-typecast" onclick="switchTTSService('typecast')" style="border-radius:0 4px 4px 0;padding:6px 14px;">Typecast</button>
+        <button class="caption-copy" id="tts-tab-eleven" onclick="switchTTSService('eleven')" style="border-radius:8px 0 0 8px;border-right:none;padding:7px 16px;">ElevenLabs</button>
+        <button class="caption-copy" id="tts-tab-typecast" onclick="switchTTSService('typecast')" style="border-radius:0 8px 8px 0;padding:7px 16px;">Typecast</button>
       </div>
 
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
@@ -378,7 +378,7 @@
     <div id="tc-sentence-panel" style="display:none;margin-top:10px;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
         <span style="font-size:12px;font-weight:600;color:var(--muted2);">문장별 감정 설정</span>
-        <select id="tc-emotion-all" onchange="setAllEmotions(this.value)" style="background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;padding:4px 8px;font-family:'Pretendard',sans-serif;outline:none;">
+        <select id="tc-emotion-all" onchange="setAllEmotions(this.value)" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;padding:7px 10px;font-family:'Pretendard',sans-serif;outline:none;">
           <option value="">전체 일괄 변경</option>
           <option value="normal">보통</option>
           <option value="happy">행복</option>
@@ -392,7 +392,7 @@
       <div id="tc-sentence-list" style="display:flex;flex-direction:column;gap:6px;max-height:300px;overflow-y:auto;"></div>
     </div>
     <audio id="tts-audio" class="tts-audio" controls style="display:none;"></audio>
-    <div id="tts-download" style="display:none;margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;">
+    <div id="tts-download" style="display:none;margin-top:8px;gap:8px;flex-wrap:wrap;">
       <button class="caption-copy" onclick="downloadTTS()">음성 다운로드</button>
       <button class="caption-copy" onclick="downloadSRT()" id="srt-download-btn">자막 다운로드 (SRT)</button>
     </div>
@@ -1185,33 +1185,82 @@ ${transcript}
     if (typecastVoicesCache) { voicesData = typecastVoicesCache; renderVoiceGrid(); return; }
 
     try {
+      // 새 API로 목소리 목록
       const res = await fetch('https://api.typecast.ai/v2/voices?model=ssfm-v30&language=ko', { headers: { 'X-API-KEY': apiKey } });
       if (!res.ok) throw new Error('Typecast 목소리 불러오기 실패 (' + res.status + ')');
       const data = await res.json();
       const raw = data.voices || data.result || data;
       console.log('[Typecast] 원본 응답:', raw);
+
+      // 구 API로 한국어 이름 + 이미지 가져오기 시도
+      let actorMap = {};
+      try {
+        const actorRes = await fetch('https://typecast.ai/api/actor', {
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey }
+        });
+        if (actorRes.ok) {
+          const actorData = await actorRes.json();
+          const actors = actorData.result || actorData;
+          console.log('[Typecast] 구 API actor 응답:', actors);
+          if (Array.isArray(actors)) {
+            actors.forEach(a => {
+              actorMap[a.actor_id] = a;
+            });
+          }
+        }
+      } catch(e) { console.log('[Typecast] 구 API 사용 불가, 로컬 매핑 사용'); }
+
       const genderKo = { male:'남성', female:'여성' };
-      const ageKo = { adult:'성인', child:'아이', senior:'노인', young_adult:'청년', middle_age:'중년', teen:'청소년' };
+      const ageKo = { adult:'성인', child:'아이', senior:'노인', young_adult:'청년', middle_age:'중년', teen:'청소년', teenager:'청소년', elder:'노인' };
       const useKo = {
         'Narration':'나레이션','Conversational':'대화','Conversation':'대화','News':'뉴스',
         'News Reporter':'뉴스','Audiobook':'오디오북','Game':'게임','E-learning/Explainer':'교육',
         'E-learning':'교육','Radio/Podcast':'팟캐스트','Radio':'라디오','Podcast':'팟캐스트',
-        'Animation':'애니메이션','Commercial':'광고','Documentary':'다큐','Assistant':'어시스턴트'
+        'Animation':'애니메이션','Commercial':'광고','Documentary':'다큐','Assistant':'어시스턴트',
+        'TikTok/Reels/Shorts':'숏폼','Audiobook/Storytelling':'낭독/오디오북',
+        'News/Documentary':'뉴스/다큐','Radio/Podcast/DJ':'라디오/팟캐스트',
+        'Gaming/Animation':'게임/애니','Education/Lecture':'교육/강의',
+        'Commercial/Events':'광고/이벤트','Documentary/Review':'다큐/리뷰'
       };
+
+      // 로컬 한국어 이름 매핑
       const nameKo = {
-        'Moonjung':'문정','Kangil':'강일','Gowoon':'고운','Alena':'알레나','Wonwoo':'원우','Seheon':'세헌',
-        'Wade':'웨이드','Seojin':'서진','Walter':'월터','Rayeon':'라연','Jihun':'지훈','Yuna':'유나',
-        'Minjun':'민준','Soyeon':'소연','Hajin':'하진','Doyun':'도윤','Subin':'수빈','Yejin':'예진',
-        'Jiwon':'지원','Hyunwoo':'현우','Nayeon':'나연','Taehyun':'태현','Eunji':'은지','Sunghoon':'성훈',
-        'Minji':'민지','Jaehyuk':'재혁','Chaewon':'채원','Dongwook':'동욱','Haeun':'하은','Junhyuk':'준혁',
-        'Sieun':'시은','Youngmin':'영민','Dain':'다인','Sangwoo':'상우','Ahra':'아라','Kyungho':'경호'
+        'Moonjung':'문정','Kangil':'대길','Gowoon':'고운','Alena':'알레나','Wonwoo':'원우','Seheon':'세헌',
+        'Wade':'웨이드','Seojin':'서진','Walter':'월터','Rayeon':'라연','Soye':'소예','Elias':'엘리아스',
+        'Kanno':'칸노','Zoey':'조이','Chad':'채드','Jain':'자인','Gus':'거스','Aaron':'아론',
+        'Eunsol':'은솔','Logan':'로건','Yejin':'예진','Igyeom':'이겸','Hailey':'헤일리','Carl':'칼',
+        'Oliver':'올리버','Jeff':'제프','Haerang':'해랑','Skylar':'스카이라','Hangyeol':'한결',
+        'Dean':'딘','Ael':'아엘','Suyoon':'수윤','Dylan':'딜런','Wonkyung':'원경',
+        'Chloe':'클로이','Arin':'아린','Landon':'랜던','Kristen':'크리스틴','Jinhan':'진한',
+        'Ron':'론','Jinhee':'진희','Seolhwa':'설화','Juyoung':'주영','Chester':'체스터',
+        'Patricia':'패트리샤','Sumin':'수민','Junseong':'준성','Royce':'로이스','Seohee':'서희',
+        'Callan':'칼란','Hyunji':'현지','Dohyun':'도현','Simon':'사이먼','Wonho':'원호',
+        'Avery':'에이버리','Minchae':'민채','Lloyd':'로이드','Yeseul':'예슬','Minjung':'민정',
+        'Siwoo':'시우','Captain Bill':'캡틴 빌','Woosung':'우성','Jungseok':'정석','Eman':'에만',
+        'Hyemin':'혜민','Sio':'시오','Jake':'제이크','Sojin':'소진','Koombo':'꿈보',
+        'Jenna':'제나','Munsu':'문수','Nathan':'네이선','Geunseok':'근석','Klip Kim':'클립 김',
+        'Ijun':'이준','Naeun':'나은','Brad':'브래드','Hansol':'한솔','Eunbin':'은빈',
+        'Neel':'닐','Yeeun':'이은','Jihyun':'지현','Cole':'콜','Risan Ji':'리산 지',
+        'Miran Choi':'미란 최','Graham':'그레이엄','Charlotte':'샬롯','Liz':'리즈','Noel':'노엘',
+        'Santa Claus':'산타','Jinseo':'진서','Juho':'주호','Frankenstein':'프랑켄슈타인',
+        "Jack-o'-Lantern":'잭오랜턴','Siyeon':'시연','Myungjoo':'명주','Tina':'티나',
+        'Justin':'저스틴','Lindsay':'린지','West':'웨스트',
+        'Luna':'루나','Junsang':'준상','Marcos':'마르코스','Ihan':'이한',
+        'Bongkyu':'봉규','Hanjun':'한준','Hyunju':'현주','Daegil':'대길'
       };
+
       voicesData = (Array.isArray(raw) ? raw : []).map(v => {
         const orig = v.voice_name || v.name || '';
-        const ko = nameKo[orig];
+        // 구 API에서 매칭 시도
+        const actorId = v.voice_id?.replace('tc_', '');
+        const actor = actorMap[actorId] || actorMap[v.voice_id] || null;
+        const koName = actor?.name?.ko || nameKo[orig] || orig;
+        const imgUrl = actor?.image_url || actor?.profile_image || actor?.avatar_url || '';
+
         return {
           voice_id: v.voice_id,
-          name: ko ? `${ko} (${orig})` : orig,
+          name: koName,
+          name_en: orig,
           category: 'typecast',
           labels: {
             gender: genderKo[v.gender] || v.gender || '',
@@ -1219,7 +1268,7 @@ ${transcript}
             use_case: (v.use_cases||[]).map(u => useKo[u] || u)[0] || ''
           },
           preview_url: v.preview_url || v.sample_url || '',
-          image_url: v.image_url || v.profile_image_url || v.thumbnail_url || v.avatar_url || '',
+          image_url: imgUrl,
           description: v.description || '',
           _service: 'typecast',
           _raw: v
@@ -1257,10 +1306,13 @@ ${transcript}
 
       const card = document.createElement('div');
       card.className = 'voice-card' + (isSelected ? ' selected' : '');
+      const initial = (v.name || '?')[0];
+      const colors = ['#e74c3c','#3498db','#2ecc71','#9b59b6','#f39c12','#1abc9c','#e67e22','#e91e63'];
+      const colorIdx = v.voice_id ? v.voice_id.charCodeAt(v.voice_id.length - 1) % colors.length : 0;
       card.innerHTML = `
         ${imgUrl
-          ? `<img class="voice-card-img" src="${imgUrl}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" alt="${v.name}"><div class="voice-card-img" style="display:none;align-items:center;justify-content:center;font-size:18px;color:var(--muted);">♪</div>`
-          : `<div class="voice-card-img" style="display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--muted);">♪</div>`
+          ? `<img class="voice-card-img" src="${imgUrl}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" alt="${v.name}"><div class="voice-card-img" style="display:none;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:#fff;background:${colors[colorIdx]};">${initial}</div>`
+          : `<div class="voice-card-img" style="display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:#fff;background:${colors[colorIdx]};">${initial}</div>`
         }
         <div class="voice-card-info">
           <div class="voice-card-name">${v.name}</div>
@@ -1280,9 +1332,12 @@ ${transcript}
     selectedVoice = v;
     const btn = document.getElementById('voice-picker-btn');
     const imgUrl = currentTTSService === 'eleven' ? getElevenImage(v) : (v.image_url || '');
+    const ini = (v.name || '?')[0];
+    const cols = ['#e74c3c','#3498db','#2ecc71','#9b59b6','#f39c12','#1abc9c','#e67e22','#e91e63'];
+    const ci = v.voice_id ? v.voice_id.charCodeAt(v.voice_id.length - 1) % cols.length : 0;
     btn.innerHTML = imgUrl
-      ? `<img src="${imgUrl}" onerror="this.outerHTML='<span class=\\'placeholder\\'>♪</span>'" alt="${v.name}"><span>${v.name}</span>`
-      : `<span class="placeholder">♪</span><span>${v.name}</span>`;
+      ? `<img src="${imgUrl}" onerror="this.outerHTML='<span class=\\'placeholder\\' style=\\'background:${cols[ci]};color:#fff;font-weight:700;\\'>${ini}</span>'" alt="${v.name}"><span>${v.name}</span>`
+      : `<span class="placeholder" style="background:${cols[ci]};color:#fff;font-weight:700;">${ini}</span><span>${v.name}</span>`;
     document.getElementById('voice-panel').style.display = 'none';
     renderVoiceGrid();
   }
@@ -1378,7 +1433,39 @@ ${transcript}
   let tcSentences = [];
 
   function splitSentences(text) {
-    return text.split(/(?<=[.!?。！？\n])\s*/g).map(s => s.trim()).filter(s => s.length > 0);
+    // 1차: 줄바꿈으로 분리
+    let lines = text.split('\n').map(s => s.trim()).filter(s => s.length > 0);
+    // 2차: 각 줄을 문장부호로 분리
+    let result = [];
+    for (const line of lines) {
+      const parts = line.split(/(?<=[.!?。！？~])\s*/g).map(s => s.trim()).filter(s => s.length > 0);
+      result.push(...parts);
+    }
+    // 3차: 40자 초과 문장은 쉼표/띄어쓰기 기준으로 추가 분할
+    const final = [];
+    for (const s of result) {
+      if (s.length <= 40) { final.push(s); continue; }
+      // 쉼표로 분할 시도
+      const commaParts = s.split(/(?<=[,，])\s*/g).map(p => p.trim()).filter(p => p.length > 0);
+      if (commaParts.length > 1) {
+        // 쉼표 분할 후에도 긴 것은 중간 공백에서 자름
+        for (const cp of commaParts) {
+          if (cp.length <= 50) { final.push(cp); continue; }
+          const mid = Math.ceil(cp.length / 2);
+          const sp = cp.indexOf(' ', mid - 10);
+          const idx = sp > 0 ? sp : mid;
+          final.push(cp.slice(0, idx).trim());
+          final.push(cp.slice(idx).trim());
+        }
+      } else {
+        const mid = Math.ceil(s.length / 2);
+        const sp = s.indexOf(' ', mid - 10);
+        const idx = sp > 0 ? sp : mid;
+        final.push(s.slice(0, idx).trim());
+        final.push(s.slice(idx).trim());
+      }
+    }
+    return final.filter(s => s.length > 0);
   }
 
   function buildSentenceEmotionPanel() {
@@ -1386,10 +1473,6 @@ ${transcript}
     if (text.length < 5) return;
 
     tcSentences = splitSentences(text);
-    if (tcSentences.length <= 1) {
-      // 문장 분리 안 되면 줄바꿈으로
-      tcSentences = text.split('\n').map(s => s.trim()).filter(s => s.length > 0);
-    }
 
     const list = document.getElementById('tc-sentence-list');
     list.innerHTML = '';
@@ -1411,6 +1494,7 @@ ${transcript}
         <span style="font-size:10px;color:var(--muted);font-weight:700;flex-shrink:0;">${i + 1}</span>
         <span class="tc-sentence-text" title="${s.replace(/"/g, '&quot;')}">${s}</span>
         <select class="tc-emotion-select" data-idx="${i}">${emotionOpts}</select>
+        <button class="voice-card-preview tc-preview-btn" data-idx="${i}" onclick="previewSentence(${i})" title="미리듣기">▶</button>
       `;
       list.appendChild(row);
     });
@@ -1422,6 +1506,68 @@ ${transcript}
   function setAllEmotions(val) {
     if (!val) return;
     document.querySelectorAll('.tc-emotion-select').forEach(sel => sel.value = val);
+  }
+
+  let sentencePreviewAudio = null;
+
+  async function previewSentence(idx) {
+    if (!selectedVoice) { toast('목소리를 먼저 선택해주세요'); return; }
+    const apiKey = getTypecastKey();
+    if (!apiKey) { toast('Typecast API 키가 없습니다'); return; }
+
+    const text = tcSentences[idx];
+    if (!text) return;
+
+    const emotion = document.querySelector(`.tc-emotion-select[data-idx="${idx}"]`)?.value || 'normal';
+    const btn = document.querySelector(`.tc-preview-btn[data-idx="${idx}"]`);
+    const prevText = idx > 0 ? tcSentences[idx - 1] : '';
+    const nextText = idx < tcSentences.length - 1 ? tcSentences[idx + 1] : '';
+
+    // 이미 재생 중이면 정지
+    if (sentencePreviewAudio && !sentencePreviewAudio.paused) {
+      sentencePreviewAudio.pause();
+      sentencePreviewAudio = null;
+      document.querySelectorAll('.tc-preview-btn').forEach(b => b.textContent = '▶');
+      return;
+    }
+
+    btn.textContent = '...';
+    btn.disabled = true;
+
+    try {
+      const res = await fetch('https://api.typecast.ai/v1/text-to-speech', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-API-KEY': apiKey },
+        body: JSON.stringify({
+          text, model: 'ssfm-v30', voice_id: selectedVoice.voice_id,
+          prompt: { emotion_type: emotion, previous_text: prevText, next_text: nextText }
+        })
+      });
+
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}));
+        console.error('[Typecast 미리듣기] 에러:', JSON.stringify(e));
+        console.error('[Typecast 미리듣기] 요청:', JSON.stringify({ text, model: 'ssfm-v30', voice_id: selectedVoice.voice_id, prompt: { emotion_type: emotion } }));
+        throw new Error(e.message || e.detail || JSON.stringify(e) || '미리듣기 실패');
+      }
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+
+      if (sentencePreviewAudio) sentencePreviewAudio.pause();
+      sentencePreviewAudio = new Audio(url);
+      sentencePreviewAudio.onended = () => {
+        btn.textContent = '▶';
+        URL.revokeObjectURL(url);
+      };
+      sentencePreviewAudio.play();
+      btn.textContent = '■';
+    } catch(e) {
+      toast('❌ ' + e.message);
+      btn.textContent = '▶';
+    }
+
+    btn.disabled = false;
   }
 
   async function generateTypecastTTS(text) {
@@ -1460,7 +1606,9 @@ ${transcript}
 
       if (!res.ok) {
         const e = await res.json().catch(() => ({}));
-        throw new Error(e.message || e.detail || `문장 ${i + 1} 생성 실패 (${res.status})`);
+        console.error('[Typecast TTS] 에러 응답:', JSON.stringify(e));
+        console.error('[Typecast TTS] 요청 body:', JSON.stringify({ text: sentences[i], model: 'ssfm-v30', voice_id: selectedVoice.voice_id, prompt: { emotion_type: emotions[i], previous_text: prevText, next_text: nextText } }));
+        throw new Error(e.message || e.detail || JSON.stringify(e) || `문장 ${i + 1} 생성 실패 (${res.status})`);
       }
 
       const blob = await res.blob();
