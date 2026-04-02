@@ -6,7 +6,10 @@
 <title>THUMB AI — 썸네일 픽커</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Pretendard:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script src="/youtubei.min.js"></script>
+<script type="module">
+import { Innertube } from '/youtubei.min.js';
+window.Innertube = Innertube;
+</script>
 <style>
   :root {
     --bg: #0a0a0a;
@@ -724,7 +727,8 @@ JSON만 반환 (다른 텍스트 없이):
         return fetch(input, init);
       };
 
-      const yt = await Innertube.create({ fetch: proxyFetch });
+      if (!window.Innertube) throw new Error('라이브러리 로딩 중... 잠시 후 다시 시도해주세요');
+      const yt = await window.Innertube.create({ fetch: proxyFetch });
       console.log('[영상] Innertube 초기화 완료');
 
       const info = await yt.getBasicInfo(videoId);
