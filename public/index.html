@@ -81,6 +81,10 @@
   .btn-primary:active { transform: scale(0.97); }
   .btn-primary:disabled { opacity: 0.35; cursor: not-allowed; transform: none; box-shadow: none; }
   .btn-sm { padding: 10px 16px; font-size: 13px; border-radius: 8px; }
+  .btn-glow { animation: btnGlow 2s ease-in-out infinite; }
+  @keyframes btnGlow { 0%,100%{ box-shadow:0 2px 10px var(--accent-glow); } 50%{ box-shadow:0 4px 24px rgba(49,130,246,0.35); } }
+  .caption-copy.btn-glow { animation: copyGlow 2s ease-in-out infinite; }
+  @keyframes copyGlow { 0%,100%{ box-shadow:0 0 8px var(--accent-glow); border-color:var(--accent); color:var(--accent); } 50%{ box-shadow:0 0 18px rgba(49,130,246,0.3); } }
   .btn-ghost { background: var(--surface2); color: var(--text2); border: 1px solid var(--border); }
   .btn-ghost:hover { background: var(--surface3); border-color: var(--border2); color: var(--text); }
 
@@ -637,6 +641,8 @@ JSON만 반환 (다른 텍스트 없이):
       toast('기사 본문 추출 완료!');
 
       showPresetSelect();
+      const genBtn = document.getElementById('gen-script-btn');
+      if (genBtn && genBtn.style.display !== 'none') genBtn.classList.add('btn-glow');
 
     } catch(e) {
       toast('기사 추출 실패: ' + e.message);
@@ -680,6 +686,7 @@ JSON만 반환 (다른 텍스트 없이):
 
       hideLoading();
       toast('영상 불러오기 완료!');
+      document.getElementById('stt-btn').classList.add('btn-glow');
     } catch(e) {
       toast('❌ ' + e.message);
       hideLoading();
@@ -921,6 +928,7 @@ JSON만 반환 (다른 텍스트 없이):
     if (!video.src || !video.duration) { toast('먼저 영상을 불러오세요'); return; }
 
     const btn = document.getElementById('stt-btn');
+    btn.classList.remove('btn-glow');
     btn.disabled = true;
     btn.textContent = '오디오 추출...';
 
@@ -979,6 +987,8 @@ JSON만 반환 (다른 텍스트 없이):
           showPresetSelect();
           btn.disabled = false;
           btn.textContent = '🎙 음성 인식';
+          const genBtn = document.getElementById('gen-script-btn');
+          if (genBtn && genBtn.style.display !== 'none') genBtn.classList.add('btn-glow');
         } else if (type === 'error') {
           document.getElementById('caption-content').textContent = '음성 인식 실패: ' + message;
           toast('음성 인식 실패');
@@ -1037,6 +1047,7 @@ JSON만 반환 (다른 텍스트 없이):
     if (!transcript || transcript.length < 10) { toast('인식된 스크립트가 없습니다'); return; }
 
     const btn = document.getElementById('gen-script-btn');
+    btn.classList.remove('btn-glow');
     btn.disabled = true;
     btn.textContent = '생성 중...';
 
@@ -1082,6 +1093,7 @@ ${transcript}
       document.getElementById('script-content').textContent = data.content[0].text;
       toast('대본 생성 완료!');
       showTTSControls();
+      document.getElementById('tts-btn').classList.add('btn-glow');
 
     } catch(e) {
       document.getElementById('script-content').textContent = '대본 생성 실패: ' + e.message;
@@ -1292,6 +1304,7 @@ ${transcript}
     if (!text || text.length < 5) { toast('생성된 대본이 없습니다'); return; }
 
     const btn = document.getElementById('tts-btn');
+    btn.classList.remove('btn-glow');
     btn.disabled = true;
     btn.textContent = '생성 중...';
 
