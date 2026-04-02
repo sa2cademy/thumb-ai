@@ -1,3 +1,20 @@
+import vm from 'vm';
+import { Platform } from 'youtubei.js';
+
+// youtubei.js의 기본 eval을 Node.js vm 기반으로 패치
+const origShim = { ...Platform.shim };
+Platform.load({
+  ...origShim,
+  eval: async (data, env) => {
+    const context = vm.createContext({ ...env });
+    const code = data.output.replace(/\nreturn process\(/, '\nvar __result__ = process(');
+    vm.runInContext(code, context);
+    return context.__result__ || context;
+  }
+});
+
+const { default: Innertube } = await import('youtubei.js');
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -12,32 +29,43 @@ export default async function handler(req, res) {
     console.log('[download] videoId:', videoId);
     if (!videoId) throw new Error('올바른 YouTube URL이 아닙니다');
 
-    // cobalt API로 다운로드 URL 가져오기
-    console.log('[download] cobalt API 호출...');
-    const cobaltRes = await fetch('https://api.cobalt.tools/', {
-      method: 'POST',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        url: `https://www.youtube.com/watch?v=${videoId}`,
-        videoQuality: '720',
-        youtubeVideoCodec: 'h264',
-        downloadMode: 'auto'
-      })
+    console.log('[download] Innertube 초기화...');
+    const yt = await Innertube.create({
+      retrieve_player: true,
+      generate_session_locally: true
     });
 
-    const cobaltData = await cobaltRes.json();
-    console.log('[download] cobalt 응답:', cobaltData.status);
+    console.log('[download] 영상 정보 가져오는 중...');
+    const info = await yt.getBasicInfo(videoId);
 
-    if (!cobaltRes.ok || (cobaltData.status !== 'tunnel' && cobaltData.status !== 'redirect')) {
-      throw new Error(cobaltData.error?.code || cobaltData.text || 'cobalt API 실패');
+    // streaming data 없으면 iOS 클라이언트로 재시도
+    let format;
+    try {
+      format = info.chooseFormat({ type: 'video+audio', quality: 'best' });
+    } catch(e) {
+      console.log('[download] 기본 포맷 실패, iOS 클라이언트로 재시도...');
+      const iosYt = await Innertube.create({
+        retrieve_player: true,
+        generate_session_locally: true,
+        client_type: 'IOS'
+      });
+      const iosInfo = await iosYt.getBasicInfo(videoId);
+      format = iosInfo.chooseFormat({ type: 'video+audio', quality: 'best' });
     }
 
-    // cobalt에서 받은 URL로 영상 다운로드
-    console.log('[download] 영상 fetch 시작...');
-    const videoRes = await fetch(cobaltData.url);
+    console.log('[download] 선택된 포맷:', format.quality_label, format.mime_type);
+
+    const streamUrl = await format.decipher(yt.session.player);
+    console.log('[download] decipher 완료, fetch 시작...');
+
+    const videoRes = await fetch(streamUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Linux; Android 11) AppleWebKit/537.36 Chrome/90.0.4430.91 Mobile Safari/537.36',
+        'Referer': 'https://www.youtube.com/',
+      }
+    });
+
+    console.log('[download] 영상 fetch 응답:', videoRes.status);
     if (!videoRes.ok) throw new Error('영상 다운로드 실패: ' + videoRes.status);
 
     res.setHeader('Content-Type', 'video/mp4');
