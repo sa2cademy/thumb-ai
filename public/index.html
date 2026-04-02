@@ -149,6 +149,11 @@
   .modal-close { position: absolute; top: -44px; right: 0; background: var(--surface3); border: none; color: var(--text2); font-size: 18px; cursor: pointer; width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; transition:all 0.2s; backdrop-filter:blur(8px); }
   .modal-close:hover { background:var(--surface3); color:var(--text); transform:scale(1.1); }
 
+  /* 문장별 감정 */
+  .tc-sentence-row { display:flex; gap:8px; align-items:center; background:var(--surface2); border:1px solid var(--border); border-radius:6px; padding:8px 10px; }
+  .tc-sentence-text { flex:1; font-size:12px; color:var(--text); line-height:1.5; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .tc-emotion-select { background:var(--surface); border:1px solid var(--border); border-radius:4px; color:var(--text); font-size:11px; padding:4px 6px; font-family:'Pretendard',sans-serif; outline:none; flex-shrink:0; }
+
   /* 섹션 구분 */
   .section-divider { height:1px; background:var(--border); margin:24px 0; }
 
@@ -315,24 +320,23 @@
       <div style="display:flex;gap:8px;align-items:center;">
         <select id="preset-select" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text2);font-size:12px;padding:7px 10px;font-family:'Pretendard',sans-serif;outline:none;transition:border-color 0.2s;"></select>
         <button class="caption-copy" onclick="generateFromTranscript()" id="gen-script-btn" style="display:none;">대본 생성</button>
-        <button class="caption-copy" onclick="openCaptionModal()">보기/수정</button>
         <button class="caption-copy" onclick="copyCaptions()">복사</button>
       </div>
     </div>
     <div id="caption-content" style="display:none;"></div>
   </div>
 
-  <!-- 자막 수정 모달 -->
-  <div class="modal-overlay" id="caption-modal" onclick="closeCaptionModal(event)">
+  <!-- 대본 수정 모달 -->
+  <div class="modal-overlay" id="script-modal" onclick="closeScriptModal(event)">
     <div style="position:relative;width:90%;max-width:600px;max-height:80vh;display:flex;flex-direction:column;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-        <span style="font-size:15px;font-weight:600;">자막 스크립트</span>
+        <span style="font-size:15px;font-weight:600;">생성된 대본</span>
         <div style="display:flex;gap:8px;">
-          <button class="caption-copy" onclick="saveCaptionEdit()">저장</button>
-          <button class="modal-close" onclick="closeCaptionModal()" style="position:static;font-size:20px;">&times;</button>
+          <button class="caption-copy" onclick="saveScriptEdit()">저장</button>
+          <button class="modal-close" onclick="closeScriptModal()" style="position:static;font-size:20px;">&times;</button>
         </div>
       </div>
-      <textarea id="caption-editor" style="flex:1;min-height:400px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:16px;color:var(--text);font-size:14px;font-family:'Pretendard',sans-serif;line-height:2;resize:none;outline:none;"></textarea>
+      <textarea id="script-editor" style="flex:1;min-height:400px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:16px;color:var(--text);font-size:14px;font-family:'Pretendard',sans-serif;line-height:2;resize:none;outline:none;"></textarea>
     </div>
   </div>
 
@@ -340,7 +344,10 @@
   <div id="script-section" class="caption-box" style="display:none;">
     <div class="caption-header">
       <span class="caption-label">생성된 대본</span>
-      <button class="caption-copy" onclick="copyScript()">복사</button>
+      <div style="display:flex;gap:8px;">
+        <button class="caption-copy" onclick="openScriptModal()">보기/수정</button>
+        <button class="caption-copy" onclick="copyScript()">복사</button>
+      </div>
     </div>
     <div id="script-content" class="caption-text"></div>
 
@@ -357,8 +364,18 @@
           <span class="placeholder">?</span>
           <span>목소리를 선택하세요</span>
         </button>
-        <!-- 타입캐스트 감정 선택 -->
-        <select id="tc-emotion" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:12px;padding:8px 10px;font-family:'Pretendard',sans-serif;outline:none;">
+        <button class="btn btn-primary btn-sm" onclick="generateTTS()" id="tts-btn">음성 생성</button>
+      </div>
+    </div>
+    <div id="voice-panel" style="display:none;margin-top:10px;">
+      <div class="voice-grid" id="voice-grid"></div>
+    </div>
+    <!-- 타입캐스트 문장별 감정 설정 -->
+    <div id="tc-sentence-panel" style="display:none;margin-top:10px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <span style="font-size:12px;font-weight:600;color:var(--muted2);">문장별 감정 설정</span>
+        <select id="tc-emotion-all" onchange="setAllEmotions(this.value)" style="background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;padding:4px 8px;font-family:'Pretendard',sans-serif;outline:none;">
+          <option value="">전체 일괄 변경</option>
           <option value="normal">보통</option>
           <option value="happy">행복</option>
           <option value="sad">슬픔</option>
@@ -367,11 +384,8 @@
           <option value="toneup">톤업</option>
           <option value="tonedown">톤다운</option>
         </select>
-        <button class="btn btn-primary btn-sm" onclick="generateTTS()" id="tts-btn">음성 생성</button>
       </div>
-    </div>
-    <div id="voice-panel" style="display:none;margin-top:10px;">
-      <div class="voice-grid" id="voice-grid"></div>
+      <div id="tc-sentence-list" style="display:flex;flex-direction:column;gap:6px;max-height:300px;overflow-y:auto;"></div>
     </div>
     <audio id="tts-audio" class="tts-audio" controls style="display:none;"></audio>
     <div id="tts-download" style="display:none;margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;">
@@ -622,9 +636,7 @@ JSON만 반환 (다른 텍스트 없이):
       hideLoading();
       toast('기사 본문 추출 완료!');
 
-      // 프리셋 있으면 자동 대본 생성
       showPresetSelect();
-      autoGenerateScript();
 
     } catch(e) {
       toast('기사 추출 실패: ' + e.message);
@@ -871,23 +883,22 @@ JSON만 반환 (다른 텍스트 없이):
     document.getElementById('caption-preview').textContent = text.slice(0, 60) + (text.length > 60 ? '...' : '');
   }
 
-  function openCaptionModal() {
-    const text = document.getElementById('caption-content').textContent;
-    document.getElementById('caption-editor').value = text;
-    document.getElementById('caption-modal').classList.add('show');
+  function openScriptModal() {
+    const text = document.getElementById('script-content').textContent;
+    document.getElementById('script-editor').value = text;
+    document.getElementById('script-modal').classList.add('show');
   }
 
-  function closeCaptionModal(e) {
+  function closeScriptModal(e) {
     if (e && e.target !== e.currentTarget) return;
-    document.getElementById('caption-modal').classList.remove('show');
+    document.getElementById('script-modal').classList.remove('show');
   }
 
-  function saveCaptionEdit() {
-    const text = document.getElementById('caption-editor').value;
-    document.getElementById('caption-content').textContent = text;
-    updateCaptionPreview();
-    closeCaptionModal();
-    toast('자막 수정됨');
+  function saveScriptEdit() {
+    const text = document.getElementById('script-editor').value;
+    document.getElementById('script-content').textContent = text;
+    closeScriptModal();
+    toast('대본 수정됨');
   }
 
   function saveFrame(dataUrl, idx) {
@@ -962,14 +973,12 @@ JSON만 반환 (다른 텍스트 없이):
           } else {
             document.getElementById('caption-content').textContent = '인식된 음성이 없습니다.';
           }
-          showLoading('대본 생성 준비', '스크립트 추출 완료!', 90);
+          hideLoading();
           updateCaptionPreview();
           toast('음성 인식 완료!');
           showPresetSelect();
           btn.disabled = false;
           btn.textContent = '🎙 음성 인식';
-          // 프리셋 있으면 자동 대본 생성
-          autoGenerateScript();
         } else if (type === 'error') {
           document.getElementById('caption-content').textContent = '음성 인식 실패: ' + message;
           toast('음성 인식 실패');
@@ -1009,21 +1018,6 @@ JSON만 반환 (다른 텍스트 없이):
     });
     select.style.display = 'inline-block';
     document.getElementById('gen-script-btn').style.display = 'inline-block';
-  }
-
-  // ── 자동 대본 생성 ──
-  function autoGenerateScript() {
-    const presets = JSON.parse(localStorage.getItem('script_presets') || '[]');
-    const ready = presets.filter(p => p.styleGuide);
-    if (!ready.length || !getApiKey()) return;
-
-    // 프리셋 1개면 바로 생성, 여러개면 선택 대기
-    if (ready.length === 1) {
-      const idx = presets.indexOf(ready[0]);
-      document.getElementById('preset-select').value = idx;
-      generateFromTranscript();
-    }
-    // 여러 개면 드롭다운 보여주고 사용자가 선택 후 버튼 클릭
   }
 
   // ── 스크립트 → 대본 생성 ──
@@ -1135,8 +1129,11 @@ ${transcript}
     tcTab.style.borderColor = service === 'typecast' ? 'var(--accent)' : 'var(--border)';
     tcTab.style.color = service === 'typecast' ? 'var(--accent)' : 'var(--muted2)';
 
-    document.getElementById('tc-emotion').style.display = service === 'typecast' ? 'inline-block' : 'none';
     document.getElementById('srt-download-btn').style.display = 'inline-block';
+
+    // 타입캐스트 문장별 감정 패널
+    if (service === 'typecast') buildSentenceEmotionPanel();
+    else document.getElementById('tc-sentence-panel').style.display = 'none';
 
     const btn = document.getElementById('voice-picker-btn');
     btn.innerHTML = '<span class="placeholder">?</span><span>목소리를 선택하세요</span>';
@@ -1181,21 +1178,41 @@ ${transcript}
       const data = await res.json();
       const raw = data.voices || data.result || data;
       console.log('[Typecast] 원본 응답:', raw);
-      voicesData = (Array.isArray(raw) ? raw : []).map(v => ({
-        voice_id: v.voice_id,
-        name: v.voice_name || v.name,
-        category: 'typecast',
-        labels: {
-          gender: v.gender === 'male' ? '남성' : v.gender === 'female' ? '여성' : v.gender || '',
-          age: v.age === 'adult' ? '성인' : v.age === 'child' ? '아이' : v.age === 'senior' ? '노인' : v.age === 'young_adult' ? '청년' : v.age || '',
-          use_case: ((v.use_cases||[])[0] || '').replace('narration','나레이션').replace('conversation','대화').replace('news','뉴스').replace('audiobook','오디오북')
-        },
-        preview_url: v.preview_url || v.sample_url || '',
-        image_url: v.image_url || v.profile_image_url || v.thumbnail_url || v.avatar_url || '',
-        description: v.description || '',
-        _service: 'typecast',
-        _raw: v
-      }));
+      const genderKo = { male:'남성', female:'여성' };
+      const ageKo = { adult:'성인', child:'아이', senior:'노인', young_adult:'청년', middle_age:'중년', teen:'청소년' };
+      const useKo = {
+        'Narration':'나레이션','Conversational':'대화','Conversation':'대화','News':'뉴스',
+        'News Reporter':'뉴스','Audiobook':'오디오북','Game':'게임','E-learning/Explainer':'교육',
+        'E-learning':'교육','Radio/Podcast':'팟캐스트','Radio':'라디오','Podcast':'팟캐스트',
+        'Animation':'애니메이션','Commercial':'광고','Documentary':'다큐','Assistant':'어시스턴트'
+      };
+      const nameKo = {
+        'Moonjung':'문정','Kangil':'강일','Gowoon':'고운','Alena':'알레나','Wonwoo':'원우','Seheon':'세헌',
+        'Wade':'웨이드','Seojin':'서진','Walter':'월터','Rayeon':'라연','Jihun':'지훈','Yuna':'유나',
+        'Minjun':'민준','Soyeon':'소연','Hajin':'하진','Doyun':'도윤','Subin':'수빈','Yejin':'예진',
+        'Jiwon':'지원','Hyunwoo':'현우','Nayeon':'나연','Taehyun':'태현','Eunji':'은지','Sunghoon':'성훈',
+        'Minji':'민지','Jaehyuk':'재혁','Chaewon':'채원','Dongwook':'동욱','Haeun':'하은','Junhyuk':'준혁',
+        'Sieun':'시은','Youngmin':'영민','Dain':'다인','Sangwoo':'상우','Ahra':'아라','Kyungho':'경호'
+      };
+      voicesData = (Array.isArray(raw) ? raw : []).map(v => {
+        const orig = v.voice_name || v.name || '';
+        const ko = nameKo[orig];
+        return {
+          voice_id: v.voice_id,
+          name: ko ? `${ko} (${orig})` : orig,
+          category: 'typecast',
+          labels: {
+            gender: genderKo[v.gender] || v.gender || '',
+            age: ageKo[v.age] || v.age || '',
+            use_case: (v.use_cases||[]).map(u => useKo[u] || u)[0] || ''
+          },
+          preview_url: v.preview_url || v.sample_url || '',
+          image_url: v.image_url || v.profile_image_url || v.thumbnail_url || v.avatar_url || '',
+          description: v.description || '',
+          _service: 'typecast',
+          _raw: v
+        };
+      });
       typecastVoicesCache = voicesData;
       renderVoiceGrid();
     } catch(e) { toast('❌ ' + e.message); console.error(e); }
@@ -1344,28 +1361,131 @@ ${transcript}
     showTTSResult(finalBlob, pauses.length > 0 ? `음성 생성 완료! (공백 ${pauses.length}곳 트리밍)` : '음성 생성 완료!');
   }
 
-  // ── Typecast TTS ──
+  // ── Typecast TTS (문장별 감정) ──
+  let tcSentences = [];
+
+  function splitSentences(text) {
+    return text.split(/(?<=[.!?。！？\n])\s*/g).map(s => s.trim()).filter(s => s.length > 0);
+  }
+
+  function buildSentenceEmotionPanel() {
+    const text = document.getElementById('script-content').textContent || '';
+    if (text.length < 5) return;
+
+    tcSentences = splitSentences(text);
+    if (tcSentences.length <= 1) {
+      // 문장 분리 안 되면 줄바꿈으로
+      tcSentences = text.split('\n').map(s => s.trim()).filter(s => s.length > 0);
+    }
+
+    const list = document.getElementById('tc-sentence-list');
+    list.innerHTML = '';
+
+    const emotionOpts = `
+      <option value="normal">보통</option>
+      <option value="happy">행복</option>
+      <option value="sad">슬픔</option>
+      <option value="angry">분노</option>
+      <option value="whisper">속삭임</option>
+      <option value="toneup">톤업</option>
+      <option value="tonedown">톤다운</option>
+    `;
+
+    tcSentences.forEach((s, i) => {
+      const row = document.createElement('div');
+      row.className = 'tc-sentence-row';
+      row.innerHTML = `
+        <span style="font-size:10px;color:var(--muted);font-weight:700;flex-shrink:0;">${i + 1}</span>
+        <span class="tc-sentence-text" title="${s.replace(/"/g, '&quot;')}">${s}</span>
+        <select class="tc-emotion-select" data-idx="${i}">${emotionOpts}</select>
+      `;
+      list.appendChild(row);
+    });
+
+    document.getElementById('tc-sentence-panel').style.display = 'block';
+    document.getElementById('tc-emotion-all').value = '';
+  }
+
+  function setAllEmotions(val) {
+    if (!val) return;
+    document.querySelectorAll('.tc-emotion-select').forEach(sel => sel.value = val);
+  }
+
   async function generateTypecastTTS(text) {
     const apiKey = getTypecastKey();
     if (!apiKey) throw new Error('Typecast API 키가 없습니다');
 
-    const emotion = document.getElementById('tc-emotion').value;
-    const res = await fetch('https://api.typecast.ai/v1/text-to-speech', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-API-KEY': apiKey },
-      body: JSON.stringify({ text, model: 'ssfm-v30', voice_id: selectedVoice.voice_id, prompt: { emotion_type: emotion } })
+    // 문장별 감정 가져오기
+    const selects = document.querySelectorAll('.tc-emotion-select');
+    const sentences = tcSentences.length > 0 ? tcSentences : [text];
+    const emotions = sentences.map((_, i) => selects[i]?.value || 'normal');
+
+    const btn = document.getElementById('tts-btn');
+    const audioChunks = [];
+    const durations = [];
+
+    for (let i = 0; i < sentences.length; i++) {
+      btn.textContent = `생성 중... (${i + 1}/${sentences.length})`;
+
+      const prevText = i > 0 ? sentences[i - 1] : '';
+      const nextText = i < sentences.length - 1 ? sentences[i + 1] : '';
+
+      const res = await fetch('https://api.typecast.ai/v1/text-to-speech', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-API-KEY': apiKey },
+        body: JSON.stringify({
+          text: sentences[i],
+          model: 'ssfm-v30',
+          voice_id: selectedVoice.voice_id,
+          prompt: {
+            emotion_type: emotions[i],
+            previous_text: prevText,
+            next_text: nextText
+          }
+        })
+      });
+
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}));
+        throw new Error(e.message || e.detail || `문장 ${i + 1} 생성 실패 (${res.status})`);
+      }
+
+      const blob = await res.blob();
+      audioChunks.push(blob);
+
+      // 각 청크 길이 측정
+      const tmpUrl = URL.createObjectURL(blob);
+      const dur = await getAudioDuration(tmpUrl);
+      URL.revokeObjectURL(tmpUrl);
+      durations.push(dur);
+    }
+
+    // 오디오 합치기
+    const combinedBlob = new Blob(audioChunks, { type: audioChunks[0].type });
+
+    // SRT 생성 (실제 각 문장 길이 기반)
+    const GAP = 0.1;
+    let time = 0;
+    const srtEntries = sentences.map((s, i) => {
+      const start = time;
+      const end = time + durations[i];
+      time = end + GAP;
+      return { text: s, start, end };
     });
-    if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.message || e.detail || '음성 생성 실패 (' + res.status + ')'); }
 
-    const blob = await res.blob();
+    const final = [];
+    for (const e of srtEntries) {
+      if (e.text.length <= 40) { final.push(e); continue; }
+      const mid = Math.ceil(e.text.length / 2);
+      const sp = e.text.indexOf(' ', mid - 10);
+      const idx = sp > 0 ? sp : mid;
+      const midTime = e.start + (e.end - e.start) * (idx / e.text.length);
+      final.push({ text: e.text.slice(0, idx).trim(), start: e.start, end: midTime });
+      final.push({ text: e.text.slice(idx).trim(), start: midTime, end: e.end });
+    }
+    ttsSrtData = final.map((s, i) => `${i + 1}\n${fmtSrtTime(s.start)} --> ${fmtSrtTime(s.end)}\n${s.text}`).join('\n\n');
 
-    // 오디오 길이 측정 후 텍스트 기반 SRT 생성
-    const tempUrl = URL.createObjectURL(blob);
-    const duration = await getAudioDuration(tempUrl);
-    URL.revokeObjectURL(tempUrl);
-    ttsSrtData = buildSRTFromText(text, duration);
-
-    showTTSResult(blob, '음성 생성 완료!');
+    showTTSResult(combinedBlob, `음성 생성 완료! (${sentences.length}문장)`);
   }
 
   function getAudioDuration(url) {
