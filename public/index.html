@@ -684,16 +684,34 @@ JSON만 반환 (다른 텍스트 없이):
 
     try {
       console.log('[영상] fetch 시작:', url);
-      const res = await fetch(`/api/download?url=${encodeURIComponent(url)}`);
-      console.log('[영상] 응답 상태:', res.status);
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || '영상 불러오기 실패 (' + res.status + ')');
-      }
+      let blobUrl;
 
-      const blob = await res.blob();
-      console.log('[영상] blob 크기:', (blob.size / 1024 / 1024).toFixed(2), 'MB');
-      const blobUrl = URL.createObjectURL(blob);
+      // 1차: 서버에서 URL만 받아서 브라우저가 직접 다운로드
+      try {
+        const urlRes = await fetch(`/api/download?url=${encodeURIComponent(url)}&mode=url`);
+        if (urlRes.ok) {
+          const { url: streamUrl } = await urlRes.json();
+          console.log('[영상] 스트림 URL 받음, 브라우저에서 직접 다운로드...');
+          const videoRes = await fetch(streamUrl);
+          if (!videoRes.ok) throw new Error('직접 다운로드 실패');
+          const blob = await videoRes.blob();
+          console.log('[영상] blob 크기:', (blob.size / 1024 / 1024).toFixed(2), 'MB');
+          blobUrl = URL.createObjectURL(blob);
+        } else {
+          throw new Error('URL 추출 실패');
+        }
+      } catch(e1) {
+        // 2차: 서버 프록시로 fallback (로컬 개발서버용)
+        console.log('[영상] 직접 다운로드 실패, 서버 프록시로 시도...', e1.message);
+        const res = await fetch(`/api/download?url=${encodeURIComponent(url)}`);
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error || '영상 불러오기 실패 (' + res.status + ')');
+        }
+        const blob = await res.blob();
+        console.log('[영상] blob 크기:', (blob.size / 1024 / 1024).toFixed(2), 'MB');
+        blobUrl = URL.createObjectURL(blob);
+      }
 
       const video = document.getElementById('preview-video');
       video.src = blobUrl;

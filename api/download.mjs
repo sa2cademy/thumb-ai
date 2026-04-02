@@ -1,7 +1,6 @@
 import vm from 'vm';
 import { Platform } from 'youtubei.js';
 
-// youtubei.js의 기본 eval을 Node.js vm 기반으로 패치
 const origShim = { ...Platform.shim };
 Platform.load({
   ...origShim,
@@ -21,29 +20,24 @@ export default async function handler(req, res) {
 
   if (req.method === 'OPTIONS') { res.status(200).end(); return; }
 
-  const { url } = req.query;
+  const { url, mode } = req.query;
   if (!url) { res.status(400).json({ error: 'URL이 없습니다' }); return; }
 
   try {
     const videoId = url.match(/(?:shorts\/|v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/)?.[1];
-    console.log('[download] videoId:', videoId);
     if (!videoId) throw new Error('올바른 YouTube URL이 아닙니다');
 
-    console.log('[download] Innertube 초기화...');
     const yt = await Innertube.create({
       retrieve_player: true,
       generate_session_locally: true
     });
 
-    console.log('[download] 영상 정보 가져오는 중...');
     const info = await yt.getBasicInfo(videoId);
 
-    // streaming data 없으면 iOS 클라이언트로 재시도
     let format;
     try {
       format = info.chooseFormat({ type: 'video+audio', quality: 'best' });
     } catch(e) {
-      console.log('[download] 기본 포맷 실패, iOS 클라이언트로 재시도...');
       const iosYt = await Innertube.create({
         retrieve_player: true,
         generate_session_locally: true,
@@ -53,11 +47,15 @@ export default async function handler(req, res) {
       format = iosInfo.chooseFormat({ type: 'video+audio', quality: 'best' });
     }
 
-    console.log('[download] 선택된 포맷:', format.quality_label, format.mime_type);
-
     const streamUrl = await format.decipher(yt.session.player);
-    console.log('[download] decipher 완료, fetch 시작...');
 
+    // mode=url이면 스트림 URL만 반환 (클라이언트가 직접 다운로드)
+    if (mode === 'url') {
+      res.status(200).json({ url: streamUrl });
+      return;
+    }
+
+    // 기본: 서버에서 프록시 (로컬 개발서버용)
     const videoRes = await fetch(streamUrl, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Linux; Android 11) AppleWebKit/537.36 Chrome/90.0.4430.91 Mobile Safari/537.36',
@@ -65,7 +63,6 @@ export default async function handler(req, res) {
       }
     });
 
-    console.log('[download] 영상 fetch 응답:', videoRes.status);
     if (!videoRes.ok) throw new Error('영상 다운로드 실패: ' + videoRes.status);
 
     res.setHeader('Content-Type', 'video/mp4');
@@ -80,7 +77,6 @@ export default async function handler(req, res) {
       res.write(Buffer.from(value));
     }
     res.end();
-    console.log('[download] 완료. 전송:', (bytes / 1024 / 1024).toFixed(2), 'MB');
 
   } catch (e) {
     console.error('[download] 에러:', e.message);
