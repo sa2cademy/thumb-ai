@@ -7,16 +7,16 @@ self.onmessage = async (e) => {
     try {
       // 1. 모델 로드 (첫 실행만)
       if (!pipeline) {
-        self.postMessage({ type: 'status', text: 'Whisper 모델 다운로드 중... (첫 실행만, ~40MB)' });
+        self.postMessage({ type: 'status', text: 'Whisper 모델 다운로드 중... (첫 실행만)' });
         const { pipeline: createPipeline } = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3');
-        pipeline = await createPipeline('automatic-speech-recognition', 'onnx-community/whisper-small', {
+        pipeline = await createPipeline('automatic-speech-recognition', 'onnx-community/whisper-tiny', {
           dtype: 'q4',
           device: 'wasm',
         });
       }
 
       // 2. 음성 인식
-      self.postMessage({ type: 'status', text: '음성 인식 중... (30초~1분 소요)' });
+      self.postMessage({ type: 'status', text: '음성 인식 중...' });
 
       const result = await pipeline(audioData, {
         language: 'korean',
