@@ -262,7 +262,6 @@
           <div class="video-info">
             <span class="video-meta" id="video-meta"></span>
             <button class="btn btn-primary btn-sm" onclick="transcribeVideo()" id="stt-btn">🎙 음성 인식</button>
-            <button class="btn btn-primary btn-sm" onclick="analyzeVideo()" id="analyze-btn">🔍 AI 썸네일 분석</button>
           </div>
         </div>
 
@@ -273,22 +272,6 @@
         </div>
       </div>
     </div>
-  </div>
-
-  <!-- 진행 상태 (YouTube 탭) -->
-  <div id="status-box" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:20px;">
-    <div class="status-label">분석 중</div>
-    <div class="progress-wrap"><div class="progress-fill" id="progress-fill"></div></div>
-    <div class="status-text" id="status-text">준비 중...</div>
-  </div>
-
-  <!-- 결과 (YouTube 탭) -->
-  <div id="result-section" style="display:none;">
-    <div class="result-top">
-      <div class="result-title">AI 추천 썸네일</div>
-      <button class="btn btn-primary btn-sm" onclick="resetAll()">↺ 다시</button>
-    </div>
-    <div class="result-grid" id="result-grid"></div>
   </div>
 
   <!-- 내 영상 탭 -->
@@ -711,7 +694,7 @@ JSON만 반환 (다른 텍스트 없이):
     showLoading('영상 다운로드 중', 'YouTube에서 영상을 가져오고 있어요', 10);
 
     try {
-      console.log('[영상] 서버 프록시로 다운로드 시작:', url);
+      console.log('[영상] fetch 시작:', url);
       const res = await fetch(`/api/download?url=${encodeURIComponent(url)}`);
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
