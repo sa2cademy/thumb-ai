@@ -1,11 +1,3 @@
-const PIPED_INSTANCES = [
-  'https://pipedapi.kavin.rocks',
-  'https://api.piped.private.coffee',
-  'https://pipedapi.darkness.services',
-  'https://pipedapi.syncpundit.io',
-  'https://api.piped.yt'
-];
-
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -19,59 +11,71 @@ export default async function handler(req, res) {
     const videoId = url.match(/(?:shorts\/|v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/)?.[1];
     if (!videoId) throw new Error('올바른 YouTube URL이 아닙니다');
 
-    let streamUrl = null;
-    let lastErr = '';
+    console.log('[download] videoId:', videoId, 'mode:', mode || 'proxy');
 
-    for (const instance of PIPED_INSTANCES) {
-      try {
-        console.log(`[download] ${instance} 시도...`);
-        const apiRes = await fetch(`${instance}/streams/${videoId}`, {
-          signal: AbortSignal.timeout(10000)
-        });
+    // YouTube 웹페이지 HTML에서 스트림 URL 추출
+    const watchUrl = `https://www.youtube.com/watch?v=${videoId}`;
+    const htmlRes = await fetch(watchUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept-Language': 'ko-KR,ko;q=0.9,en;q=0.8',
+        'Accept': 'text/html,application/xhtml+xml',
+      }
+    });
 
-        if (!apiRes.ok) { lastErr = `${instance}: ${apiRes.status}`; continue; }
+    if (!htmlRes.ok) throw new Error('YouTube 페이지 로드 실패: ' + htmlRes.status);
+    const html = await htmlRes.text();
 
-        const contentType = apiRes.headers.get('content-type') || '';
-        if (!contentType.includes('json')) { lastErr = `${instance}: JSON 아님`; continue; }
-
-        const data = await apiRes.json();
-
-        // video+audio 포맷 (videoStreams에서 videoOnly가 아닌 것)
-        const streams = data.videoStreams?.filter(s => !s.videoOnly && s.mimeType?.includes('mp4')) || [];
-        // 720p 이하에서 가장 좋은 화질
-        const best = streams.find(s => s.quality === '720p')
-          || streams.find(s => s.quality === '480p')
-          || streams.find(s => s.quality === '360p')
-          || streams[0];
-
-        // videoStreams에 video+audio가 없으면 audioStreams에서 오디오만이라도
-        if (!best) {
-          // hls 사용
-          if (data.hls) { streamUrl = data.hls; break; }
-          lastErr = `${instance}: 적합한 포맷 없음`;
-          continue;
-        }
-
-        streamUrl = best.url;
-        console.log(`[download] ${instance} 성공: ${best.quality}`);
-        break;
-      } catch(e) {
-        lastErr = `${instance}: ${e.message}`;
+    // ytInitialPlayerResponse 추출
+    let playerResponse;
+    const prMatch = html.match(/var ytInitialPlayerResponse\s*=\s*(\{.+?\});/s);
+    if (prMatch) {
+      playerResponse = JSON.parse(prMatch[1]);
+    } else {
+      // 다른 패턴 시도
+      const prMatch2 = html.match(/ytInitialPlayerResponse\s*=\s*(\{.+?\});/s);
+      if (prMatch2) {
+        playerResponse = JSON.parse(prMatch2[1]);
       }
     }
 
-    if (!streamUrl) throw new Error('영상 URL 추출 실패: ' + lastErr);
+    if (!playerResponse) throw new Error('플레이어 데이터를 찾을 수 없습니다');
 
-    // mode=url이면 URL만 반환 (브라우저가 직접 다운로드)
+    const streamingData = playerResponse.streamingData;
+    if (!streamingData) throw new Error('스트리밍 데이터 없음 (로그인 필요 또는 제한된 영상)');
+
+    // video+audio 포맷 찾기 (formats = muxed, adaptiveFormats = separate)
+    const formats = streamingData.formats || [];
+    const best = formats.find(f => f.mimeType?.includes('video/mp4') && f.qualityLabel === '720p')
+      || formats.find(f => f.mimeType?.includes('video/mp4') && f.qualityLabel === '480p')
+      || formats.find(f => f.mimeType?.includes('video/mp4'))
+      || formats[0];
+
+    if (!best) throw new Error('적합한 포맷을 찾을 수 없습니다');
+
+    const streamUrl = best.url;
+    if (!streamUrl) {
+      // signatureCipher가 있는 경우 (암호화된 URL)
+      if (best.signatureCipher) {
+        throw new Error('암호화된 스트림 (서버에서 해독 불가) - 파일을 직접 올려주세요');
+      }
+      throw new Error('스트림 URL 없음');
+    }
+
+    console.log('[download] 스트림 URL 추출 성공:', best.qualityLabel, best.mimeType);
+
+    // mode=url → URL만 반환 (브라우저가 직접 다운로드)
     if (mode === 'url') {
-      res.status(200).json({ url: streamUrl });
+      res.status(200).json({ url: streamUrl, quality: best.qualityLabel });
       return;
     }
 
-    // 서버 프록시 모드
+    // 서버 프록시 모드 (로컬 개발서버용)
     const videoRes = await fetch(streamUrl, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (Linux; Android 11) AppleWebKit/537.36 Chrome/90.0.4430.91 Mobile Safari/537.36' },
-      signal: AbortSignal.timeout(50000)
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36',
+        'Referer': 'https://www.youtube.com/',
+      }
     });
 
     if (!videoRes.ok) throw new Error('영상 다운로드 실패: ' + videoRes.status);
