@@ -1,9 +1,9 @@
-const INVIDIOUS_INSTANCES = [
-  'https://inv.nadeko.net',
-  'https://invidious.nerdvpn.de',
-  'https://invidious.jing.rocks',
-  'https://invidious.privacyredirect.com',
-  'https://iv.ggtyler.dev'
+const PIPED_INSTANCES = [
+  'https://pipedapi.kavin.rocks',
+  'https://api.piped.private.coffee',
+  'https://pipedapi.darkness.services',
+  'https://pipedapi.syncpundit.io',
+  'https://api.piped.yt'
 ];
 
 export default async function handler(req, res) {
@@ -19,40 +19,50 @@ export default async function handler(req, res) {
     const videoId = url.match(/(?:shorts\/|v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/)?.[1];
     if (!videoId) throw new Error('올바른 YouTube URL이 아닙니다');
 
-    // invidious 인스턴스에서 스트림 URL 가져오기
     let streamUrl = null;
     let lastErr = '';
 
-    for (const instance of INVIDIOUS_INSTANCES) {
+    for (const instance of PIPED_INSTANCES) {
       try {
         console.log(`[download] ${instance} 시도...`);
-        const apiRes = await fetch(`${instance}/api/v1/videos/${videoId}`, {
-          headers: { 'Accept': 'application/json' },
+        const apiRes = await fetch(`${instance}/streams/${videoId}`, {
           signal: AbortSignal.timeout(10000)
         });
+
         if (!apiRes.ok) { lastErr = `${instance}: ${apiRes.status}`; continue; }
 
-        const data = await apiRes.json();
-        // video+audio 포맷 찾기
-        const formats = data.formatStreams || [];
-        const best = formats.find(f => f.container === 'mp4' && f.encoding?.includes('avc1'))
-          || formats.find(f => f.container === 'mp4')
-          || formats[0];
+        const contentType = apiRes.headers.get('content-type') || '';
+        if (!contentType.includes('json')) { lastErr = `${instance}: JSON 아님`; continue; }
 
-        if (best?.url) {
-          streamUrl = best.url;
-          console.log(`[download] ${instance}에서 스트림 URL 획득`);
-          break;
+        const data = await apiRes.json();
+
+        // video+audio 포맷 (videoStreams에서 videoOnly가 아닌 것)
+        const streams = data.videoStreams?.filter(s => !s.videoOnly && s.mimeType?.includes('mp4')) || [];
+        // 720p 이하에서 가장 좋은 화질
+        const best = streams.find(s => s.quality === '720p')
+          || streams.find(s => s.quality === '480p')
+          || streams.find(s => s.quality === '360p')
+          || streams[0];
+
+        // videoStreams에 video+audio가 없으면 audioStreams에서 오디오만이라도
+        if (!best) {
+          // hls 사용
+          if (data.hls) { streamUrl = data.hls; break; }
+          lastErr = `${instance}: 적합한 포맷 없음`;
+          continue;
         }
-        lastErr = `${instance}: 포맷 없음`;
+
+        streamUrl = best.url;
+        console.log(`[download] ${instance} 성공: ${best.quality}`);
+        break;
       } catch(e) {
         lastErr = `${instance}: ${e.message}`;
       }
     }
 
-    if (!streamUrl) throw new Error('모든 인스턴스 실패: ' + lastErr);
+    if (!streamUrl) throw new Error('영상 URL 추출 실패: ' + lastErr);
 
-    // mode=url이면 URL만 반환
+    // mode=url이면 URL만 반환 (브라우저가 직접 다운로드)
     if (mode === 'url') {
       res.status(200).json({ url: streamUrl });
       return;
@@ -60,9 +70,8 @@ export default async function handler(req, res) {
 
     // 서버 프록시 모드
     const videoRes = await fetch(streamUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Linux; Android 11) AppleWebKit/537.36 Chrome/90.0.4430.91 Mobile Safari/537.36',
-      }
+      headers: { 'User-Agent': 'Mozilla/5.0 (Linux; Android 11) AppleWebKit/537.36 Chrome/90.0.4430.91 Mobile Safari/537.36' },
+      signal: AbortSignal.timeout(50000)
     });
 
     if (!videoRes.ok) throw new Error('영상 다운로드 실패: ' + videoRes.status);
