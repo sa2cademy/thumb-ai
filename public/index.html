@@ -405,7 +405,14 @@
         <button class="btn btn-primary btn-sm" id="premiere-export-btn" onclick="exportPremiereAuto()" style="flex:1;min-width:120px;">Premiere Pro</button>
         <button class="btn btn-primary btn-sm" onclick="exportCapcut()" style="flex:1;min-width:120px;">CapCut</button>
       </div>
-      <input type="file" id="prproj-upload" accept=".prproj" style="display:none;" onchange="handlePrprojUpload(event)">
+      <input type="file" id="prproj-upload" webkitdirectory style="display:none;" onchange="handlePrprojFolderUpload(event)">
+      <div id="prproj-drop-zone" style="display:none;margin-top:10px;border:2px dashed var(--border);border-radius:8px;padding:20px;text-align:center;color:var(--muted);font-size:12px;cursor:pointer;transition:all 0.2s;"
+        ondragover="event.preventDefault();this.style.borderColor='var(--accent)';this.style.color='var(--accent)'"
+        ondragleave="this.style.borderColor='var(--border)';this.style.color='var(--muted)'"
+        ondrop="event.preventDefault();this.style.borderColor='var(--border)';this.style.color='var(--muted)';handlePrprojFolderDrop(event)"
+        onclick="document.getElementById('prproj-upload').click()">
+        프리미어 프로젝트 폴더를 여기에 드롭하거나 클릭
+      </div>
       <div id="prproj-status" style="display:none;margin-top:8px;font-size:12px;color:var(--muted2);"></div>
     </div>
   </div>
@@ -1957,173 +1964,174 @@ ${transcript}
     toast('캡컷 프로젝트 파일 다운로드 완료 (draft_content.json)');
   }
 
-  // ── 프리미어 XML (XMEML) 내보내기 ──
-  // ── 프리미어 .prproj 주입 ──
+  // ── 프리미어 프로젝트 폴더 처리 ──
   async function exportPremiereAuto() {
     if (!ttsAudioUrl || !ttsSrtData) { toast('먼저 음성을 생성하세요'); return; }
 
-    // 설정에 등록된 prproj 확인
+    // 설정에 등록된 prproj가 있으면 바로 처리 (폴더 없이 prproj만)
     const savedData = localStorage.getItem('prproj_data');
     const savedName = localStorage.getItem('prproj_name');
     if (savedData && savedName) {
-      // base64 → ArrayBuffer
       const binary = atob(savedData);
       const bytes = new Uint8Array(binary.length);
       for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-      await processPrproj(bytes.buffer, savedName);
+      await processPremiereProject([{ name: savedName, data: bytes.buffer, isPrproj: true }], savedName.replace('.prproj', ''));
     } else {
-      // 등록된 파일 없으면 업로드 요청
-      document.getElementById('prproj-upload').click();
+      // 폴더 업로드 또는 드롭 요청
+      document.getElementById('prproj-drop-zone').style.display = 'block';
     }
   }
 
-  async function handlePrprojUpload(e) {
-    const file = e.target.files[0];
-    if (!file) return;
+  // 폴더 선택 (input webkitdirectory)
+  async function handlePrprojFolderUpload(e) {
     if (!ttsAudioUrl || !ttsSrtData) { toast('먼저 음성을 생성하세요'); return; }
-    const arrBuf = await file.arrayBuffer();
-    await processPrproj(arrBuf, file.name);
+    const fileList = Array.from(e.target.files);
+    if (!fileList.length) return;
+
+    // 폴더명 추출
+    const folderName = fileList[0].webkitRelativePath?.split('/')[0] || 'project';
+    const files = [];
+    for (const f of fileList) {
+      const relPath = f.webkitRelativePath || f.name;
+      files.push({ name: relPath, data: await f.arrayBuffer(), isPrproj: f.name.endsWith('.prproj') });
+    }
+    await processPremiereProject(files, folderName);
     e.target.value = '';
   }
 
-  async function processPrproj(arrBuf, fileName) {
+  // 폴더 드롭
+  async function handlePrprojFolderDrop(e) {
+    if (!ttsAudioUrl || !ttsSrtData) { toast('먼저 음성을 생성하세요'); return; }
 
+    const items = e.dataTransfer.items;
+    const files = [];
+    let folderName = 'project';
+
+    const readEntry = async (entry, path) => {
+      if (entry.isFile) {
+        const file = await new Promise(r => entry.file(r));
+        const relPath = path + file.name;
+        files.push({ name: relPath, data: await file.arrayBuffer(), isPrproj: file.name.endsWith('.prproj') });
+      } else if (entry.isDirectory) {
+        if (!path) folderName = entry.name;
+        const reader = entry.createReader();
+        const entries = await new Promise(r => reader.readEntries(r));
+        for (const ent of entries) await readEntry(ent, path + entry.name + '/');
+      }
+    };
+
+    for (const item of items) {
+      const entry = item.webkitGetAsEntry?.();
+      if (entry) await readEntry(entry, '');
+    }
+
+    if (files.length === 0) { toast('파일을 찾을 수 없습니다'); return; }
+    await processPremiereProject(files, folderName);
+  }
+
+  // 폴더 내 .prproj 수정 + 오디오/SRT 추가 → ZIP
+  async function processPremiereProject(files, folderName) {
     const status = document.getElementById('prproj-status');
     status.style.display = 'block';
-    status.textContent = '프로젝트 파일 처리 중...';
+    status.textContent = '프로젝트 처리 중...';
 
     try {
-      // 1. .prproj 읽기 (gzip 압축 XML)
+      // .prproj 찾기
+      const prprojFile = files.find(f => f.isPrproj);
+      if (!prprojFile) { toast('.prproj 파일을 찾을 수 없습니다'); status.style.display = 'none'; return; }
+
+      // 1. prproj gzip 해제
+      status.textContent = '.prproj 파일 분석 중...';
       const ds = new DecompressionStream('gzip');
-      const writer = ds.writable.getWriter();
-      const reader = ds.readable.getReader();
-
-      writer.write(new Uint8Array(arrBuf));
-      writer.close();
-
+      const w = ds.writable.getWriter();
+      w.write(new Uint8Array(prprojFile.data)); w.close();
+      const r = ds.readable.getReader();
       const chunks = [];
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        chunks.push(value);
-      }
-      const decoded = new Uint8Array(chunks.reduce((acc, c) => acc + c.length, 0));
-      let offset = 0;
-      for (const c of chunks) { decoded.set(c, offset); offset += c.length; }
+      while (true) { const { done, value } = await r.read(); if (done) break; chunks.push(value); }
+      const decoded = new Uint8Array(chunks.reduce((a, c) => a + c.length, 0));
+      let off = 0; for (const c of chunks) { decoded.set(c, off); off += c.length; }
       let xmlStr = new TextDecoder().decode(decoded);
 
-      console.log('[Premiere] prproj XML 파싱 완료, 길이:', xmlStr.length);
-
-      // 2. SRT 파싱
+      // 2. timebase 추출
       const subs = parseSRT(ttsSrtData);
       const audioEl = document.getElementById('tts-audio');
       const durationSec = audioEl.duration || 30;
-
-      // 3. 프로젝트에서 timebase 추출
       const tbMatch = xmlStr.match(/<TimeBase>(\d+)<\/TimeBase>/);
       const fps = tbMatch ? parseInt(tbMatch[1]) : 30;
       const totalFrames = Math.round(durationSec * fps);
       const secToFrames = (s) => Math.round(s * fps);
 
-      // 4. 오디오 파일을 프로젝트 폴더 기준 상대경로로 참조
-      const audioFileName = 'tts_audio.wav';
-
-      // 5. 오디오 클립 XML 조각 (프리미어 내부 형식)
       const uid = () => {
-        const hex = () => Math.floor(Math.random() * 0xffffffff).toString(16).padStart(8, '0');
-        return `${hex()}-${hex().slice(0,4)}-${hex().slice(0,4)}-${hex().slice(0,4)}-${hex()}${hex().slice(0,4)}`;
+        const h = () => Math.floor(Math.random() * 0xffffffff).toString(16).padStart(8, '0');
+        return `${h()}-${h().slice(0,4)}-${h().slice(0,4)}-${h().slice(0,4)}-${h()}${h().slice(0,4)}`;
       };
 
-      const audioClipId = uid();
-      const audioFileId = uid();
-
-      // 6. 자막 클립 XML 조각들
-      let captionClips = '';
-      subs.forEach((s, i) => {
-        const startF = secToFrames(s.start);
-        const endF = secToFrames(s.end);
-        const esc = s.text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-        captionClips += `
-        <ClipItem ObjectUID="${uid()}">
-          <Name>${esc}</Name>
-          <Start>${startF}</Start>
-          <End>${endF}</End>
-          <InPoint>0</InPoint>
-          <OutPoint>${endF - startF}</OutPoint>
-          <SubClip>${esc}</SubClip>
-        </ClipItem>`;
-      });
-
-      // 7. 첫 번째 시퀀스의 AudioClipTrackGroup에 오디오 트랙 추가
-      // 오디오 트랙 주입 시도
+      // 3. 오디오 트랙 주입
+      status.textContent = '오디오 트랙 주입 중...';
       const audioTrackXml = `
       <AudioClipTrack ObjectUID="${uid()}">
         <ClipItems>
-          <ClipItem ObjectUID="${audioClipId}">
+          <ClipItem ObjectUID="${uid()}">
             <Name>tts_audio</Name>
             <Start>0</Start>
             <End>${totalFrames}</End>
             <InPoint>0</InPoint>
             <OutPoint>${totalFrames}</OutPoint>
-            <FilePath>${audioFileName}</FilePath>
+            <FilePath>tts_audio.wav</FilePath>
           </ClipItem>
         </ClipItems>
       </AudioClipTrack>`;
 
-      // AudioClipTrackGroup 찾아서 트랙 추가
       const audioGroupIdx = xmlStr.indexOf('</AudioClipTrackGroup>');
       if (audioGroupIdx !== -1) {
         xmlStr = xmlStr.slice(0, audioGroupIdx) + audioTrackXml + xmlStr.slice(audioGroupIdx);
-        console.log('[Premiere] 오디오 트랙 주입 완료');
-      } else {
-        console.warn('[Premiere] AudioClipTrackGroup을 찾을 수 없음');
       }
 
-      // 8. 다시 gzip 압축
-      status.textContent = '프로젝트 파일 재압축 중...';
+      // 4. 다시 gzip 압축
+      status.textContent = '프로젝트 재압축 중...';
       const cs = new CompressionStream('gzip');
-      const csWriter = cs.writable.getWriter();
-      const csReader = cs.readable.getReader();
-
-      csWriter.write(new TextEncoder().encode(xmlStr));
-      csWriter.close();
-
+      const csW = cs.writable.getWriter();
+      csW.write(new TextEncoder().encode(xmlStr)); csW.close();
+      const csR = cs.readable.getReader();
       const compChunks = [];
-      while (true) {
-        const { done, value } = await csReader.read();
-        if (done) break;
-        compChunks.push(value);
-      }
-      const compLen = compChunks.reduce((acc, c) => acc + c.length, 0);
+      while (true) { const { done, value } = await csR.read(); if (done) break; compChunks.push(value); }
+      const compLen = compChunks.reduce((a, c) => a + c.length, 0);
       const compressed = new Uint8Array(compLen);
-      let cOff = 0;
-      for (const c of compChunks) { compressed.set(c, cOff); cOff += c.length; }
+      let cOff = 0; for (const c of compChunks) { compressed.set(c, cOff); cOff += c.length; }
 
-      // 9. ZIP 패키지 (수정된 .prproj + 오디오 파일)
+      // 5. ZIP 생성 - 원본 폴더 구조 유지 + prproj만 교체 + 오디오/SRT 추가
       status.textContent = 'ZIP 패키지 생성 중...';
       const audioBlob = await fetch(ttsAudioUrl).then(r => r.blob());
       const audioArr = await audioBlob.arrayBuffer();
 
       const zip = new JSZip();
-      const projName = fileName.replace('.prproj', '');
-      const folder = zip.folder(projName + '_TTS');
-      folder.file(fileName, compressed);
-      folder.file(audioFileName, audioArr);
-      folder.file('tts_subtitle.srt', ttsSrtData);
+      // 원본 파일들 그대로 추가 (prproj만 수정본으로 교체)
+      for (const f of files) {
+        if (f.isPrproj) {
+          zip.file(f.name, compressed);
+        } else {
+          zip.file(f.name, f.data);
+        }
+      }
+
+      // 오디오 + SRT를 prproj와 같은 경로에 추가
+      const prprojDir = prprojFile.name.includes('/') ? prprojFile.name.substring(0, prprojFile.name.lastIndexOf('/') + 1) : '';
+      zip.file(prprojDir + 'tts_audio.wav', audioArr);
+      zip.file(prprojDir + 'tts_subtitle.srt', ttsSrtData);
 
       const zipBlob = await zip.generateAsync({ type: 'blob' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(zipBlob);
-      a.download = projName + '_TTS.zip';
+      a.download = folderName + '.zip';
       a.click();
 
-      status.textContent = '완료! 압축 풀고 .prproj 파일을 실행하세요.';
-      toast('프리미어 프로젝트 다운로드 완료!');
-
+      status.textContent = '완료! 압축 풀고 .prproj를 실행하세요.';
+      document.getElementById('prproj-drop-zone').style.display = 'none';
+      toast('프로젝트 다운로드 완료!');
     } catch(err) {
       console.error('[Premiere] 에러:', err);
       status.textContent = '처리 실패: ' + err.message;
-      toast('❌ 프로젝트 처리 실패');
+      toast('❌ ' + err.message);
     }
   }
 </script>
