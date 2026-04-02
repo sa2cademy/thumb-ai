@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>THUMB AI — 썸네일 픽커</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Pretendard:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
   :root {
     --bg: #0a0a0a;
@@ -392,9 +393,20 @@
       <div id="tc-sentence-list" style="display:flex;flex-direction:column;gap:6px;max-height:300px;overflow-y:auto;"></div>
     </div>
     <audio id="tts-audio" class="tts-audio" controls style="display:none;"></audio>
+    <!-- 음성+자막 다운로드 -->
     <div id="tts-download" style="display:none;margin-top:8px;gap:8px;flex-wrap:wrap;">
       <button class="caption-copy" onclick="downloadTTS()">음성 다운로드</button>
       <button class="caption-copy" onclick="downloadSRT()" id="srt-download-btn">자막 다운로드 (SRT)</button>
+    </div>
+    <!-- 편집기 내보내기 -->
+    <div id="tts-export" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--border);">
+      <div style="font-size:12px;color:var(--muted2);font-weight:600;margin-bottom:10px;">어떤 편집기로 작업하시나요?</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-primary btn-sm" id="premiere-export-btn" onclick="exportPremiereAuto()" style="flex:1;min-width:120px;">Premiere Pro</button>
+        <button class="btn btn-primary btn-sm" onclick="exportCapcut()" style="flex:1;min-width:120px;">CapCut</button>
+      </div>
+      <input type="file" id="prproj-upload" accept=".prproj" style="display:none;" onchange="handlePrprojUpload(event)">
+      <div id="prproj-status" style="display:none;margin-top:8px;font-size:12px;color:var(--muted2);"></div>
     </div>
   </div>
 </div>
@@ -1152,6 +1164,7 @@ ${transcript}
     document.getElementById('voice-panel').style.display = 'none';
     document.getElementById('tts-audio').style.display = 'none';
     document.getElementById('tts-download').style.display = 'none';
+    document.getElementById('tts-export').style.display = 'none';
 
     if (service === 'eleven') loadElevenVoices();
     else loadTypecastVoices();
@@ -1540,15 +1553,14 @@ ${transcript}
         headers: { 'Content-Type': 'application/json', 'X-API-KEY': apiKey },
         body: JSON.stringify({
           text, model: 'ssfm-v30', voice_id: selectedVoice.voice_id,
-          prompt: { emotion_type: emotion, previous_text: prevText, next_text: nextText }
+          prompt: { emotion_type: 'preset', emotion_preset: emotion }
         })
       });
 
       if (!res.ok) {
         const e = await res.json().catch(() => ({}));
         console.error('[Typecast 미리듣기] 에러:', JSON.stringify(e));
-        console.error('[Typecast 미리듣기] 요청:', JSON.stringify({ text, model: 'ssfm-v30', voice_id: selectedVoice.voice_id, prompt: { emotion_type: emotion } }));
-        throw new Error(e.message || e.detail || JSON.stringify(e) || '미리듣기 실패');
+        throw new Error(e.message || e.detail || '미리듣기 실패');
       }
 
       const blob = await res.blob();
@@ -1574,79 +1586,102 @@ ${transcript}
     const apiKey = getTypecastKey();
     if (!apiKey) throw new Error('Typecast API 키가 없습니다');
 
-    // 문장별 감정 가져오기
     const selects = document.querySelectorAll('.tc-emotion-select');
     const sentences = tcSentences.length > 0 ? tcSentences : [text];
     const emotions = sentences.map((_, i) => selects[i]?.value || 'normal');
+    const allSame = emotions.every(e => e === emotions[0]);
 
     const btn = document.getElementById('tts-btn');
-    const audioChunks = [];
-    const durations = [];
 
-    for (let i = 0; i < sentences.length; i++) {
-      btn.textContent = `생성 중... (${i + 1}/${sentences.length})`;
-
-      const prevText = i > 0 ? sentences[i - 1] : '';
-      const nextText = i < sentences.length - 1 ? sentences[i + 1] : '';
-
+    if (allSame) {
+      // 감정 동일 → 전체 텍스트 한번에 생성
+      btn.textContent = '생성 중...';
       const res = await fetch('https://api.typecast.ai/v1/text-to-speech', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-API-KEY': apiKey },
         body: JSON.stringify({
-          text: sentences[i],
-          model: 'ssfm-v30',
-          voice_id: selectedVoice.voice_id,
-          prompt: {
-            emotion_type: emotions[i],
-            previous_text: prevText,
-            next_text: nextText
-          }
+          text, model: 'ssfm-v30', voice_id: selectedVoice.voice_id,
+          prompt: { emotion_type: 'preset', emotion_preset: emotions[0] }
         })
       });
-
-      if (!res.ok) {
-        const e = await res.json().catch(() => ({}));
-        console.error('[Typecast TTS] 에러 응답:', JSON.stringify(e));
-        console.error('[Typecast TTS] 요청 body:', JSON.stringify({ text: sentences[i], model: 'ssfm-v30', voice_id: selectedVoice.voice_id, prompt: { emotion_type: emotions[i], previous_text: prevText, next_text: nextText } }));
-        throw new Error(e.message || e.detail || JSON.stringify(e) || `문장 ${i + 1} 생성 실패 (${res.status})`);
-      }
+      if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.message || e.detail || '생성 실패'); }
 
       const blob = await res.blob();
-      audioChunks.push(blob);
-
-      // 각 청크 길이 측정
       const tmpUrl = URL.createObjectURL(blob);
-      const dur = await getAudioDuration(tmpUrl);
+      const duration = await getAudioDuration(tmpUrl);
       URL.revokeObjectURL(tmpUrl);
-      durations.push(dur);
+      ttsSrtData = buildSRTFromText(text, duration);
+      showTTSResult(blob, '음성 생성 완료!');
+
+    } else {
+      // 감정 다름 → 문장별 생성 후 Web Audio API로 합치기
+      const audioBuffers = [];
+      const audioCtx = new AudioContext();
+
+      for (let i = 0; i < sentences.length; i++) {
+        btn.textContent = `생성 중... (${i + 1}/${sentences.length})`;
+
+        const res = await fetch('https://api.typecast.ai/v1/text-to-speech', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-API-KEY': apiKey },
+          body: JSON.stringify({
+            text: sentences[i], model: 'ssfm-v30', voice_id: selectedVoice.voice_id,
+            prompt: { emotion_type: 'preset', emotion_preset: emotions[i] }
+          })
+        });
+        if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.message || e.detail || `문장 ${i+1} 실패`); }
+
+        const arrBuf = await res.arrayBuffer();
+        const decoded = await audioCtx.decodeAudioData(arrBuf);
+        audioBuffers.push(decoded);
+      }
+
+      // AudioBuffer 합치기
+      const sr = audioBuffers[0].sampleRate;
+      const numCh = audioBuffers[0].numberOfChannels;
+      const GAP_SAMPLES = Math.round(0.05 * sr); // 50ms 간격
+      const totalLen = audioBuffers.reduce((sum, b) => sum + b.length, 0) + GAP_SAMPLES * (audioBuffers.length - 1);
+
+      const offCtx = new OfflineAudioContext(numCh, totalLen, sr);
+      let offset = 0;
+      const durations = [];
+      for (let i = 0; i < audioBuffers.length; i++) {
+        const src = offCtx.createBufferSource();
+        src.buffer = audioBuffers[i];
+        src.connect(offCtx.destination);
+        src.start(offset / sr);
+        durations.push(audioBuffers[i].duration);
+        offset += audioBuffers[i].length;
+        if (i < audioBuffers.length - 1) offset += GAP_SAMPLES;
+      }
+
+      const rendered = await offCtx.startRendering();
+      const combinedBlob = audioBufferToWav(rendered);
+      audioCtx.close();
+
+      // SRT 생성 (실측 기반)
+      const GAP_SEC = GAP_SAMPLES / sr;
+      let time = 0;
+      const srtEntries = sentences.map((s, i) => {
+        const start = time;
+        const end = time + durations[i];
+        time = end + GAP_SEC;
+        return { text: s, start, end };
+      });
+      const srtFinal = [];
+      for (const e of srtEntries) {
+        if (e.text.length <= 40) { srtFinal.push(e); continue; }
+        const mid = Math.ceil(e.text.length / 2);
+        const sp = e.text.indexOf(' ', mid - 10);
+        const idx = sp > 0 ? sp : mid;
+        const mt = e.start + (e.end - e.start) * (idx / e.text.length);
+        srtFinal.push({ text: e.text.slice(0, idx).trim(), start: e.start, end: mt });
+        srtFinal.push({ text: e.text.slice(idx).trim(), start: mt, end: e.end });
+      }
+      ttsSrtData = srtFinal.map((s, i) => `${i+1}\n${fmtSrtTime(s.start)} --> ${fmtSrtTime(s.end)}\n${s.text}`).join('\n\n');
+
+      showTTSResult(combinedBlob, `음성 생성 완료! (${sentences.length}문장, 감정 혼합)`);
     }
-
-    // 오디오 합치기
-    const combinedBlob = new Blob(audioChunks, { type: audioChunks[0].type });
-
-    // SRT 생성 (실제 각 문장 길이 기반)
-    const GAP = 0.1;
-    let time = 0;
-    const srtEntries = sentences.map((s, i) => {
-      const start = time;
-      const end = time + durations[i];
-      time = end + GAP;
-      return { text: s, start, end };
-    });
-
-    const final = [];
-    for (const e of srtEntries) {
-      if (e.text.length <= 40) { final.push(e); continue; }
-      const mid = Math.ceil(e.text.length / 2);
-      const sp = e.text.indexOf(' ', mid - 10);
-      const idx = sp > 0 ? sp : mid;
-      const midTime = e.start + (e.end - e.start) * (idx / e.text.length);
-      final.push({ text: e.text.slice(0, idx).trim(), start: e.start, end: midTime });
-      final.push({ text: e.text.slice(idx).trim(), start: midTime, end: e.end });
-    }
-    ttsSrtData = final.map((s, i) => `${i + 1}\n${fmtSrtTime(s.start)} --> ${fmtSrtTime(s.end)}\n${s.text}`).join('\n\n');
-
-    showTTSResult(combinedBlob, `음성 생성 완료! (${sentences.length}문장)`);
   }
 
   function getAudioDuration(url) {
@@ -1703,6 +1738,7 @@ ${transcript}
     document.getElementById('tts-audio').src = ttsAudioUrl;
     document.getElementById('tts-audio').style.display = 'block';
     document.getElementById('tts-download').style.display = 'flex';
+    document.getElementById('tts-export').style.display = 'block';
     toast(msg);
   }
 
@@ -1818,6 +1854,277 @@ ${transcript}
     a.href = URL.createObjectURL(blob);
     a.download = 'tts_subtitle.srt';
     a.click();
+  }
+
+  // ── SRT 파싱 (프로젝트 파일 생성용) ──
+  function parseSRT(srt) {
+    if (!srt) return [];
+    return srt.trim().split('\n\n').map(block => {
+      const lines = block.split('\n');
+      if (lines.length < 3) return null;
+      const times = lines[1].split(' --> ');
+      return {
+        text: lines.slice(2).join('\n'),
+        start: srtTimeToSec(times[0]),
+        end: srtTimeToSec(times[1])
+      };
+    }).filter(Boolean);
+  }
+
+  function srtTimeToSec(t) {
+    const [h, m, rest] = t.split(':');
+    const [s, ms] = rest.split(',');
+    return +h * 3600 + +m * 60 + +s + +ms / 1000;
+  }
+
+  // ── 캡컷 프로젝트 내보내기 ──
+  function exportCapcut() {
+    if (!ttsAudioUrl) { toast('먼저 음성을 생성하세요'); return; }
+    const subs = parseSRT(ttsSrtData);
+
+    const uid = () => crypto.randomUUID?.() || Math.random().toString(36).slice(2);
+    const audioId = uid();
+    const audioMatId = uid();
+
+    // 오디오 길이 (ms)
+    const audio = document.getElementById('tts-audio');
+    const durationMs = Math.round((audio.duration || 30) * 1000);
+
+    const draft = {
+      id: uid(),
+      name: 'TTS_Project',
+      create_time: Math.floor(Date.now() / 1000),
+      duration: durationMs * 1000, // microseconds
+      fps: 30,
+      canvas_config: { width: 1080, height: 1920, ratio: '9:16' },
+      materials: {
+        audios: [{
+          id: audioMatId,
+          duration: durationMs * 1000,
+          local_material_id: audioId,
+          name: 'tts_audio',
+          path: 'tts_audio.wav',
+          type: 'extract_music'
+        }],
+        texts: subs.map((s, i) => ({
+          id: uid(),
+          content: JSON.stringify({ text: s.text }),
+          font_size: 8.0,
+          font_color: '#FFFFFF',
+          alignment: 1,
+          _idx: i
+        })),
+        videos: [],
+        images: []
+      },
+      tracks: [
+        {
+          type: 'audio',
+          attribute: 0,
+          segments: [{
+            id: uid(),
+            material_id: audioMatId,
+            target_timerange: { start: 0, duration: durationMs * 1000 },
+            source_timerange: { start: 0, duration: durationMs * 1000 }
+          }]
+        },
+        {
+          type: 'text',
+          attribute: 0,
+          segments: subs.map((s, i) => ({
+            id: uid(),
+            material_id: draft?.materials?.texts?.[i]?.id || uid(),
+            target_timerange: {
+              start: Math.round(s.start * 1000000),
+              duration: Math.round((s.end - s.start) * 1000000)
+            }
+          }))
+        }
+      ]
+    };
+
+    // text material id 매핑 수정
+    const textMats = draft.materials.texts;
+    draft.tracks[1].segments.forEach((seg, i) => {
+      if (textMats[i]) seg.material_id = textMats[i].id;
+    });
+
+    const blob = new Blob([JSON.stringify(draft, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'draft_content.json';
+    a.click();
+    toast('캡컷 프로젝트 파일 다운로드 완료 (draft_content.json)');
+  }
+
+  // ── 프리미어 XML (XMEML) 내보내기 ──
+  // ── 프리미어 .prproj 주입 ──
+  async function exportPremiereAuto() {
+    if (!ttsAudioUrl || !ttsSrtData) { toast('먼저 음성을 생성하세요'); return; }
+
+    // 설정에 등록된 prproj 확인
+    const savedData = localStorage.getItem('prproj_data');
+    const savedName = localStorage.getItem('prproj_name');
+    if (savedData && savedName) {
+      // base64 → ArrayBuffer
+      const binary = atob(savedData);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      await processPrproj(bytes.buffer, savedName);
+    } else {
+      // 등록된 파일 없으면 업로드 요청
+      document.getElementById('prproj-upload').click();
+    }
+  }
+
+  async function handlePrprojUpload(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (!ttsAudioUrl || !ttsSrtData) { toast('먼저 음성을 생성하세요'); return; }
+    const arrBuf = await file.arrayBuffer();
+    await processPrproj(arrBuf, file.name);
+    e.target.value = '';
+  }
+
+  async function processPrproj(arrBuf, fileName) {
+
+    const status = document.getElementById('prproj-status');
+    status.style.display = 'block';
+    status.textContent = '프로젝트 파일 처리 중...';
+
+    try {
+      // 1. .prproj 읽기 (gzip 압축 XML)
+      const ds = new DecompressionStream('gzip');
+      const writer = ds.writable.getWriter();
+      const reader = ds.readable.getReader();
+
+      writer.write(new Uint8Array(arrBuf));
+      writer.close();
+
+      const chunks = [];
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+      }
+      const decoded = new Uint8Array(chunks.reduce((acc, c) => acc + c.length, 0));
+      let offset = 0;
+      for (const c of chunks) { decoded.set(c, offset); offset += c.length; }
+      let xmlStr = new TextDecoder().decode(decoded);
+
+      console.log('[Premiere] prproj XML 파싱 완료, 길이:', xmlStr.length);
+
+      // 2. SRT 파싱
+      const subs = parseSRT(ttsSrtData);
+      const audioEl = document.getElementById('tts-audio');
+      const durationSec = audioEl.duration || 30;
+
+      // 3. 프로젝트에서 timebase 추출
+      const tbMatch = xmlStr.match(/<TimeBase>(\d+)<\/TimeBase>/);
+      const fps = tbMatch ? parseInt(tbMatch[1]) : 30;
+      const totalFrames = Math.round(durationSec * fps);
+      const secToFrames = (s) => Math.round(s * fps);
+
+      // 4. 오디오 파일을 프로젝트 폴더 기준 상대경로로 참조
+      const audioFileName = 'tts_audio.wav';
+
+      // 5. 오디오 클립 XML 조각 (프리미어 내부 형식)
+      const uid = () => {
+        const hex = () => Math.floor(Math.random() * 0xffffffff).toString(16).padStart(8, '0');
+        return `${hex()}-${hex().slice(0,4)}-${hex().slice(0,4)}-${hex().slice(0,4)}-${hex()}${hex().slice(0,4)}`;
+      };
+
+      const audioClipId = uid();
+      const audioFileId = uid();
+
+      // 6. 자막 클립 XML 조각들
+      let captionClips = '';
+      subs.forEach((s, i) => {
+        const startF = secToFrames(s.start);
+        const endF = secToFrames(s.end);
+        const esc = s.text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        captionClips += `
+        <ClipItem ObjectUID="${uid()}">
+          <Name>${esc}</Name>
+          <Start>${startF}</Start>
+          <End>${endF}</End>
+          <InPoint>0</InPoint>
+          <OutPoint>${endF - startF}</OutPoint>
+          <SubClip>${esc}</SubClip>
+        </ClipItem>`;
+      });
+
+      // 7. 첫 번째 시퀀스의 AudioClipTrackGroup에 오디오 트랙 추가
+      // 오디오 트랙 주입 시도
+      const audioTrackXml = `
+      <AudioClipTrack ObjectUID="${uid()}">
+        <ClipItems>
+          <ClipItem ObjectUID="${audioClipId}">
+            <Name>tts_audio</Name>
+            <Start>0</Start>
+            <End>${totalFrames}</End>
+            <InPoint>0</InPoint>
+            <OutPoint>${totalFrames}</OutPoint>
+            <FilePath>${audioFileName}</FilePath>
+          </ClipItem>
+        </ClipItems>
+      </AudioClipTrack>`;
+
+      // AudioClipTrackGroup 찾아서 트랙 추가
+      const audioGroupIdx = xmlStr.indexOf('</AudioClipTrackGroup>');
+      if (audioGroupIdx !== -1) {
+        xmlStr = xmlStr.slice(0, audioGroupIdx) + audioTrackXml + xmlStr.slice(audioGroupIdx);
+        console.log('[Premiere] 오디오 트랙 주입 완료');
+      } else {
+        console.warn('[Premiere] AudioClipTrackGroup을 찾을 수 없음');
+      }
+
+      // 8. 다시 gzip 압축
+      status.textContent = '프로젝트 파일 재압축 중...';
+      const cs = new CompressionStream('gzip');
+      const csWriter = cs.writable.getWriter();
+      const csReader = cs.readable.getReader();
+
+      csWriter.write(new TextEncoder().encode(xmlStr));
+      csWriter.close();
+
+      const compChunks = [];
+      while (true) {
+        const { done, value } = await csReader.read();
+        if (done) break;
+        compChunks.push(value);
+      }
+      const compLen = compChunks.reduce((acc, c) => acc + c.length, 0);
+      const compressed = new Uint8Array(compLen);
+      let cOff = 0;
+      for (const c of compChunks) { compressed.set(c, cOff); cOff += c.length; }
+
+      // 9. ZIP 패키지 (수정된 .prproj + 오디오 파일)
+      status.textContent = 'ZIP 패키지 생성 중...';
+      const audioBlob = await fetch(ttsAudioUrl).then(r => r.blob());
+      const audioArr = await audioBlob.arrayBuffer();
+
+      const zip = new JSZip();
+      const projName = fileName.replace('.prproj', '');
+      const folder = zip.folder(projName + '_TTS');
+      folder.file(fileName, compressed);
+      folder.file(audioFileName, audioArr);
+      folder.file('tts_subtitle.srt', ttsSrtData);
+
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(zipBlob);
+      a.download = projName + '_TTS.zip';
+      a.click();
+
+      status.textContent = '완료! 압축 풀고 .prproj 파일을 실행하세요.';
+      toast('프리미어 프로젝트 다운로드 완료!');
+
+    } catch(err) {
+      console.error('[Premiere] 에러:', err);
+      status.textContent = '처리 실패: ' + err.message;
+      toast('❌ 프로젝트 처리 실패');
+    }
   }
 </script>
 </body>
