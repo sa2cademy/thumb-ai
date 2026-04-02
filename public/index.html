@@ -6,10 +6,6 @@
 <title>THUMB AI — 썸네일 픽커</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Pretendard:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script type="module">
-import { Innertube } from '/youtubei.min.js';
-window.Innertube = Innertube;
-</script>
 <style>
   :root {
     --bg: #0a0a0a;
@@ -266,6 +262,7 @@ window.Innertube = Innertube;
           <div class="video-info">
             <span class="video-meta" id="video-meta"></span>
             <button class="btn btn-primary btn-sm" onclick="transcribeVideo()" id="stt-btn">🎙 음성 인식</button>
+            <button class="btn btn-primary btn-sm" onclick="analyzeVideo()" id="analyze-btn">🔍 AI 썸네일 분석</button>
           </div>
         </div>
 
@@ -276,6 +273,22 @@ window.Innertube = Innertube;
         </div>
       </div>
     </div>
+  </div>
+
+  <!-- 진행 상태 (YouTube 탭) -->
+  <div id="status-box" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:20px;">
+    <div class="status-label">분석 중</div>
+    <div class="progress-wrap"><div class="progress-fill" id="progress-fill"></div></div>
+    <div class="status-text" id="status-text">준비 중...</div>
+  </div>
+
+  <!-- 결과 (YouTube 탭) -->
+  <div id="result-section" style="display:none;">
+    <div class="result-top">
+      <div class="result-title">AI 추천 썸네일</div>
+      <button class="btn btn-primary btn-sm" onclick="resetAll()">↺ 다시</button>
+    </div>
+    <div class="result-grid" id="result-grid"></div>
   </div>
 
   <!-- 내 영상 탭 -->
@@ -698,64 +711,13 @@ JSON만 반환 (다른 텍스트 없이):
     showLoading('영상 다운로드 중', 'YouTube에서 영상을 가져오고 있어요', 10);
 
     try {
-      console.log('[영상] youtubei.js 클라이언트 시작:', url);
-      const videoId = url.match(/(?:shorts\/|v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/)?.[1];
-      if (!videoId) throw new Error('올바른 YouTube URL이 아닙니다');
-
-      // youtubei.js를 프록시 fetch로 초기화 (CORS 우회)
-      const proxyFetch = async (input, init) => {
-        const reqUrl = typeof input === 'string' ? input : input.url;
-        const reqInit = typeof input === 'string' ? (init || {}) : input;
-        // YouTube API 요청만 프록시, 나머지는 직접
-        if (reqUrl.includes('youtube.com') || reqUrl.includes('googlevideo.com') || reqUrl.includes('google.com')) {
-          let bodyText = null;
-          if (reqInit.body) {
-            bodyText = typeof reqInit.body === 'string' ? reqInit.body : await new Response(reqInit.body).text();
-          }
-          const proxyRes = await fetch('/api/download', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              url: reqUrl,
-              method: reqInit.method || 'GET',
-              headers: Object.fromEntries(new Headers(reqInit.headers || {}).entries()),
-              body: bodyText,
-            })
-          });
-          return proxyRes;
-        }
-        return fetch(input, init);
-      };
-
-      if (!window.Innertube) throw new Error('라이브러리 로딩 중... 잠시 후 다시 시도해주세요');
-      const yt = await window.Innertube.create({ fetch: proxyFetch });
-      console.log('[영상] Innertube 초기화 완료');
-
-      const info = await yt.getBasicInfo(videoId);
-      const format = info.chooseFormat({ type: 'video+audio', quality: 'best' });
-      console.log('[영상] 포맷:', format.quality_label, format.mime_type);
-
-      const streamUrl = await format.decipher(yt.session.player);
-      console.log('[영상] 스트림 URL 획득, 다운로드 시작...');
-
-      // googlevideo CDN에서 직접 다운로드 시도, CORS 실패 시 프록시 fallback
-      let blob;
-      try {
-        const directRes = await fetch(streamUrl);
-        if (!directRes.ok) throw new Error(directRes.status);
-        blob = await directRes.blob();
-        console.log('[영상] 직접 다운로드 성공');
-      } catch (e) {
-        console.log('[영상] 직접 다운로드 실패, 프록시로 시도...', e.message);
-        const proxyRes = await fetch('/api/download', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url: streamUrl, method: 'GET', headers: { 'Referer': 'https://www.youtube.com/' } })
-        });
-        if (!proxyRes.ok) throw new Error('영상 다운로드 실패: ' + proxyRes.status);
-        blob = await proxyRes.blob();
-        console.log('[영상] 프록시 다운로드 성공');
+      console.log('[영상] 서버 프록시로 다운로드 시작:', url);
+      const res = await fetch(`/api/download?url=${encodeURIComponent(url)}`);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || '영상 불러오기 실패 (' + res.status + ')');
       }
+      const blob = await res.blob();
       console.log('[영상] blob 크기:', (blob.size / 1024 / 1024).toFixed(2), 'MB');
       const blobUrl = URL.createObjectURL(blob);
 
