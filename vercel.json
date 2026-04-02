@@ -2,7 +2,7 @@
   "outputDirectory": "public",
   "functions": {
     "api/download.mjs": {
-      "maxDuration": 60
+      "maxDuration": 30
     }
   }
 }

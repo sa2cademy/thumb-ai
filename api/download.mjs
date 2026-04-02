@@ -1,73 +1,38 @@
-import vm from 'vm';
-import { Platform } from 'youtubei.js';
-
-const origShim = { ...Platform.shim };
-Platform.load({
-  ...origShim,
-  eval: async (data, env) => {
-    const context = vm.createContext({ ...env });
-    const code = data.output.replace(/\nreturn process\(/, '\nvar __result__ = process(');
-    vm.runInContext(code, context);
-    return context.__result__ || context;
-  }
-});
-
-const { default: Innertube } = await import('youtubei.js');
-
+// YouTube API 요청 프록시 (CORS 우회용)
+// 브라우저의 youtubei.js가 YouTube API를 호출할 때 이 프록시를 경유
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (req.method === 'OPTIONS') { res.status(200).end(); return; }
+  if (req.method !== 'POST') { res.status(405).json({ error: 'POST only' }); return; }
 
-  const { url } = req.query;
-  if (!url) { res.status(400).json({ error: 'URL이 없습니다' }); return; }
+  const { url, method, headers, body } = req.body || {};
+  if (!url) { res.status(400).json({ error: 'url 필수' }); return; }
 
   try {
-    const videoId = url.match(/(?:shorts\/|v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/)?.[1];
-    console.log('[download] videoId:', videoId);
-    if (!videoId) throw new Error('올바른 YouTube URL이 아닙니다');
+    const fetchOpts = { method: method || 'POST' };
 
-    console.log('[download] Innertube 초기화...');
-    const yt = await Innertube.create();
-
-    console.log('[download] 영상 정보 가져오는 중...');
-    const info = await yt.getBasicInfo(videoId);
-
-    const format = info.chooseFormat({ type: 'video+audio', quality: 'best' });
-    console.log('[download] 선택된 포맷:', format.quality_label, format.mime_type);
-
-    const streamUrl = await format.decipher(yt.session.player);
-    console.log('[download] decipher 완료, fetch 시작...');
-
-    const videoRes = await fetch(streamUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Linux; Android 11) AppleWebKit/537.36 Chrome/90.0.4430.91 Mobile Safari/537.36',
-        'Referer': 'https://www.youtube.com/',
-      }
-    });
-
-    console.log('[download] 영상 fetch 응답:', videoRes.status);
-    if (!videoRes.ok) throw new Error('영상 다운로드 실패: ' + videoRes.status);
-
-    res.setHeader('Content-Type', 'video/mp4');
-    res.setHeader('Content-Disposition', 'inline; filename="video.mp4"');
-
-    let bytes = 0;
-    const reader = videoRes.body.getReader();
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      bytes += value.length;
-      res.write(Buffer.from(value));
+    if (headers) {
+      // 프록시에 불필요한 헤더 제거
+      const h = { ...headers };
+      delete h['host'];
+      delete h['origin'];
+      delete h['referer'];
+      fetchOpts.headers = h;
     }
-    res.end();
-    console.log('[download] 완료. 전송:', (bytes / 1024 / 1024).toFixed(2), 'MB');
 
+    if (body) fetchOpts.body = typeof body === 'string' ? body : JSON.stringify(body);
+
+    const response = await fetch(url, fetchOpts);
+    const contentType = response.headers.get('content-type') || '';
+    const data = await response.arrayBuffer();
+
+    res.setHeader('Content-Type', contentType);
+    res.status(response.status).send(Buffer.from(data));
   } catch (e) {
-    console.error('[download] 에러:', e.message);
-    if (!res.headersSent) {
-      res.status(500).json({ error: e.message });
-    }
+    console.error('[proxy] 에러:', e.message);
+    res.status(500).json({ error: e.message });
   }
 }
