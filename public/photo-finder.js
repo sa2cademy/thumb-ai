@@ -3,11 +3,11 @@ const PF = (() => {
 
 // ── 상수 ──
 const MIN_IMAGE_SIZE       = 400;
-const INITIAL_TARGET_RESULTS = 20;
+const INITIAL_TARGET_RESULTS = 12;
 const SECOND_PASS_TOP_K    = 8;
 const SECOND_PASS_MIN_POOL = 3;
-const MAX_QUERY_COUNT      = 5;
-const MAX_QUERY_PAGE       = 91;
+const MAX_QUERY_COUNT      = 2;
+const MAX_QUERY_PAGE       = 1;
 
 const selectedPhotoKeys = new Set();
 
@@ -160,8 +160,12 @@ function inferTypeFromLabel(label) {
 
 function shouldUseRepresentativeFallback(sentence, localEntity, keyword) {
   if (!keyword) return false;
-  if (localEntity && KNOWN_ENTITY_RULES.some(r=>r.label===localEntity.label)) return false;
-  if (localEntity && ['brand','group','person','symbol','country','title'].includes(localEntity.type)) return false;
+  // 로컬 엔티티가 대표 키워드와 같으면 그대로 사용
+  if (localEntity && localEntity.label === keyword) return false;
+  // 특정 인물/그룹/브랜드가 문장의 주어일 때만 로컬 엔티티 우선
+  // "한국", "태극기" 같은 일반 엔티티는 대표 키워드에 양보
+  if (localEntity && ['country','symbol'].includes(localEntity.type)) return true;
+  if (localEntity && ['person','group','brand','title'].includes(localEntity.type) && localEntity.label !== keyword) return false;
   const text=String(sentence||'');
   if (/[?？]$/.test(text)) return true;
   if (/^-/.test(text.trim())) return true;
@@ -351,18 +355,17 @@ async function findPhotos(sentences, keyword, apiKey, onProgress) {
 
   const results = [];
   for (let i = 0; i < sentences.length; i++) {
-    onProgress?.(`사진 검색 중... (${i+1}/${sentences.length})`);
+    onProgress?.(`사진 검색 중... (${i + 1}/${sentences.length})`);
 
     const plan = buildSentencePlan(i, sentences, keyword, globalPlan, facePriorityLock);
-    if (!plan) { results.push({sentence:sentences[i], plan:null, photos:[]}); continue; }
+    if (!plan) { results.push({ sentence: sentences[i], plan: null, photos: [] }); continue; }
 
-    let photos = await searchByPriorityQueries(plan.search_queries, plan);
-    photos = await secondPassRerankPhotos(photos, plan, apiKey);
+    const photos = await searchByPriorityQueries(plan.search_queries, plan);
 
-    // 선택된 사진 키 등록 (중복 방지)
-    photos.slice(0,2).forEach(p => { const k=p.link||p.thumbnail; if(k) selectedPhotoKeys.add(k); });
+    // 상위 사진 키 등록 (다음 문장에서 중복 방지)
+    photos.slice(0, 4).forEach(p => { const k = p.link || p.thumbnail; if (k) selectedPhotoKeys.add(k); });
 
-    results.push({ sentence:sentences[i], plan, photos:photos.slice(0,6) });
+    results.push({ sentence: sentences[i], plan, photos: photos.slice(0, 6) });
   }
   return results;
 }
