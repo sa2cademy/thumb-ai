@@ -376,6 +376,11 @@
         </button>
         <button class="btn btn-primary btn-sm" onclick="generateTTS()" id="tts-btn">음성 생성</button>
       </div>
+      <div style="display:flex;gap:10px;align-items:center;margin-top:8px;">
+        <span style="font-size:11px;color:var(--muted);white-space:nowrap;">배속</span>
+        <input type="range" id="tts-speed" min="0.5" max="2.0" step="0.1" value="1.0" style="flex:1;accent-color:var(--accent);" oninput="document.getElementById('tts-speed-val').textContent=this.value+'x'">
+        <span id="tts-speed-val" style="font-size:12px;color:var(--text2);min-width:32px;">1.0x</span>
+      </div>
     </div>
     <div id="voice-panel" style="display:none;margin-top:10px;">
       <div class="voice-grid" id="voice-grid"></div>
@@ -1549,7 +1554,7 @@ ${transcript}
     const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${selectedVoice.voice_id}/with-timestamps`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'xi-api-key': apiKey },
-      body: JSON.stringify({ text, model_id: 'eleven_multilingual_v2', voice_settings: { stability: 0.5, similarity_boost: 0.75 } })
+      body: JSON.stringify({ text, model_id: 'eleven_multilingual_v2', voice_settings: { stability: 0.5, similarity_boost: 0.75, speed: parseFloat(document.getElementById('tts-speed').value) || 1.0 } })
     });
     if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.detail?.message || '음성 생성 실패 (' + res.status + ')'); }
 
@@ -1706,7 +1711,8 @@ ${transcript}
         headers: { 'Content-Type': 'application/json', 'X-API-KEY': apiKey },
         body: JSON.stringify({
           text, model: 'ssfm-v30', voice_id: selectedVoice.voice_id,
-          prompt: { emotion_type: 'preset', emotion_preset: emotion }
+          prompt: { emotion_type: 'preset', emotion_preset: emotion },
+          speed: parseFloat(document.getElementById('tts-speed').value) || 1.0
         })
       });
 
@@ -1757,7 +1763,8 @@ ${transcript}
         headers: { 'Content-Type': 'application/json', 'X-API-KEY': apiKey },
         body: JSON.stringify({
           text: sentences[i], model: 'ssfm-v30', voice_id: selectedVoice.voice_id,
-          prompt: { emotion_type: 'preset', emotion_preset: emotions[i] }
+          prompt: { emotion_type: 'preset', emotion_preset: emotions[i] },
+          speed: parseFloat(document.getElementById('tts-speed').value) || 1.0
         })
       });
       if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.message || e.detail || `문장 ${i+1} 실패`); }
