@@ -409,23 +409,6 @@
       <button class="caption-copy" onclick="downloadTTS()">음성 다운로드</button>
       <button class="caption-copy" onclick="downloadSRT()" id="srt-download-btn">자막 다운로드 (SRT)</button>
     </div>
-    <!-- 편집기 내보내기 -->
-    <div id="tts-export" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--border);">
-      <div style="font-size:12px;color:var(--muted2);font-weight:600;margin-bottom:10px;">어떤 편집기로 작업하시나요?</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <button class="btn btn-primary btn-sm" id="premiere-export-btn" onclick="exportPremiereAuto()" style="flex:1;min-width:120px;">Premiere Pro</button>
-        <button class="btn btn-primary btn-sm" onclick="exportCapcut()" style="flex:1;min-width:120px;">CapCut</button>
-      </div>
-      <input type="file" id="prproj-upload" webkitdirectory style="display:none;" onchange="handlePrprojFolderUpload(event)">
-      <div id="prproj-drop-zone" style="display:none;margin-top:10px;border:2px dashed var(--border);border-radius:8px;padding:20px;text-align:center;color:var(--muted);font-size:12px;cursor:pointer;transition:all 0.2s;"
-        ondragover="event.preventDefault();this.style.borderColor='var(--accent)';this.style.color='var(--accent)'"
-        ondragleave="this.style.borderColor='var(--border)';this.style.color='var(--muted)'"
-        ondrop="event.preventDefault();this.style.borderColor='var(--border)';this.style.color='var(--muted)';handlePrprojFolderDrop(event)"
-        onclick="document.getElementById('prproj-upload').click()">
-        프리미어 프로젝트 폴더를 여기에 드롭하거나 클릭
-      </div>
-      <div id="prproj-status" style="display:none;margin-top:8px;font-size:12px;color:var(--muted2);"></div>
-    </div>
   </div>
 </div>
 
@@ -1209,7 +1192,6 @@ ${transcript}
     document.getElementById('voice-panel').style.display = 'none';
     document.getElementById('tts-audio').style.display = 'none';
     document.getElementById('tts-download').style.display = 'none';
-    document.getElementById('tts-export').style.display = 'none';
 
     if (service === 'eleven') loadElevenVoices();
     else loadTypecastVoices();
@@ -1783,7 +1765,6 @@ ${transcript}
     document.getElementById('tts-audio').src = ttsAudioUrl;
     document.getElementById('tts-audio').style.display = 'block';
     document.getElementById('tts-download').style.display = 'flex';
-    document.getElementById('tts-export').style.display = 'block';
     toast(msg);
   }
 
@@ -1901,7 +1882,7 @@ ${transcript}
     a.click();
   }
 
-  // ── SRT 파싱 (프로젝트 파일 생성용) ──
+  // ── SRT 파싱 ──
   function parseSRT(srt) {
     if (!srt) return [];
     return srt.trim().split('\n\n').map(block => {
@@ -1923,193 +1904,6 @@ ${transcript}
   }
 
   // ── 캡컷 프로젝트 내보내기 ──
-  function exportCapcut() {
-    if (!ttsAudioUrl) { toast('먼저 음성을 생성하세요'); return; }
-    const subs = parseSRT(ttsSrtData);
-
-    const uid = () => crypto.randomUUID?.() || Math.random().toString(36).slice(2);
-    const audioId = uid();
-    const audioMatId = uid();
-
-    // 오디오 길이 (ms)
-    const audio = document.getElementById('tts-audio');
-    const durationMs = Math.round((audio.duration || 30) * 1000);
-
-    const draft = {
-      id: uid(),
-      name: 'TTS_Project',
-      create_time: Math.floor(Date.now() / 1000),
-      duration: durationMs * 1000, // microseconds
-      fps: 30,
-      canvas_config: { width: 1080, height: 1920, ratio: '9:16' },
-      materials: {
-        audios: [{
-          id: audioMatId,
-          duration: durationMs * 1000,
-          local_material_id: audioId,
-          name: 'tts_audio',
-          path: 'tts_audio.wav',
-          type: 'extract_music'
-        }],
-        texts: subs.map((s, i) => ({
-          id: uid(),
-          content: JSON.stringify({ text: s.text }),
-          font_size: 8.0,
-          font_color: '#FFFFFF',
-          alignment: 1,
-          _idx: i
-        })),
-        videos: [],
-        images: []
-      },
-      tracks: [
-        {
-          type: 'audio',
-          attribute: 0,
-          segments: [{
-            id: uid(),
-            material_id: audioMatId,
-            target_timerange: { start: 0, duration: durationMs * 1000 },
-            source_timerange: { start: 0, duration: durationMs * 1000 }
-          }]
-        },
-        {
-          type: 'text',
-          attribute: 0,
-          segments: subs.map((s, i) => ({
-            id: uid(),
-            material_id: draft?.materials?.texts?.[i]?.id || uid(),
-            target_timerange: {
-              start: Math.round(s.start * 1000000),
-              duration: Math.round((s.end - s.start) * 1000000)
-            }
-          }))
-        }
-      ]
-    };
-
-    // text material id 매핑 수정
-    const textMats = draft.materials.texts;
-    draft.tracks[1].segments.forEach((seg, i) => {
-      if (textMats[i]) seg.material_id = textMats[i].id;
-    });
-
-    const blob = new Blob([JSON.stringify(draft, null, 2)], { type: 'application/json' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'draft_content.json';
-    a.click();
-    toast('캡컷 프로젝트 파일 다운로드 완료 (draft_content.json)');
-  }
-
-  // ── 프리미어 프로젝트 폴더 처리 ──
-  async function exportPremiereAuto() {
-    if (!ttsAudioUrl || !ttsSrtData) { toast('먼저 음성을 생성하세요'); return; }
-
-    // 설정에 등록된 prproj가 있으면 바로 처리 (폴더 없이 prproj만)
-    const savedData = localStorage.getItem('prproj_data');
-    const savedName = localStorage.getItem('prproj_name');
-    if (savedData && savedName) {
-      const binary = atob(savedData);
-      const bytes = new Uint8Array(binary.length);
-      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-      await processPremiereProject([{ name: savedName, data: bytes.buffer, isPrproj: true }], savedName.replace('.prproj', ''));
-    } else {
-      // 폴더 업로드 또는 드롭 요청
-      document.getElementById('prproj-drop-zone').style.display = 'block';
-    }
-  }
-
-  // 폴더 선택 (input webkitdirectory)
-  async function handlePrprojFolderUpload(e) {
-    if (!ttsAudioUrl || !ttsSrtData) { toast('먼저 음성을 생성하세요'); return; }
-    const fileList = Array.from(e.target.files);
-    if (!fileList.length) return;
-
-    // 폴더명 추출
-    const folderName = fileList[0].webkitRelativePath?.split('/')[0] || 'project';
-    const files = [];
-    for (const f of fileList) {
-      const relPath = f.webkitRelativePath || f.name;
-      files.push({ name: relPath, data: await f.arrayBuffer(), isPrproj: f.name.endsWith('.prproj') });
-    }
-    await processPremiereProject(files, folderName);
-    e.target.value = '';
-  }
-
-  // 폴더 드롭
-  async function handlePrprojFolderDrop(e) {
-    if (!ttsAudioUrl || !ttsSrtData) { toast('먼저 음성을 생성하세요'); return; }
-
-    const items = e.dataTransfer.items;
-    const files = [];
-    let folderName = 'project';
-
-    const readEntry = async (entry, path) => {
-      if (entry.isFile) {
-        const file = await new Promise(r => entry.file(r));
-        const relPath = path + file.name;
-        files.push({ name: relPath, data: await file.arrayBuffer(), isPrproj: file.name.endsWith('.prproj') });
-      } else if (entry.isDirectory) {
-        if (!path) folderName = entry.name;
-        const reader = entry.createReader();
-        // readEntries는 한 번에 최대 100개만 반환 → 빈 배열 올 때까지 반복
-        let entries = [];
-        let batch;
-        do {
-          batch = await new Promise(r => reader.readEntries(r));
-          entries = entries.concat(batch);
-        } while (batch.length > 0);
-        for (const ent of entries) await readEntry(ent, path + entry.name + '/');
-      }
-    };
-
-    for (const item of items) {
-      const entry = item.webkitGetAsEntry?.();
-      if (entry) await readEntry(entry, '');
-    }
-
-    if (files.length === 0) { toast('파일을 찾을 수 없습니다'); return; }
-    await processPremiereProject(files, folderName);
-  }
-
-  // 폴더에 오디오/SRT 추가 → ZIP
-  async function processPremiereProject(files, folderName) {
-    const status = document.getElementById('prproj-status');
-    status.style.display = 'block';
-    status.textContent = 'ZIP 패키지 생성 중...';
-
-    try {
-      const audioBlob = await fetch(ttsAudioUrl).then(r => r.blob());
-      const audioArr = await audioBlob.arrayBuffer();
-
-      const prprojFile = files.find(f => f.isPrproj);
-      const prprojDir = prprojFile && prprojFile.name.includes('/')
-        ? prprojFile.name.substring(0, prprojFile.name.lastIndexOf('/') + 1)
-        : (files[0]?.name.includes('/') ? files[0].name.split('/')[0] + '/' : '');
-
-      const zip = new JSZip();
-      for (const f of files) {
-        zip.file(f.name, f.data);
-      }
-      zip.file(prprojDir + 'tts_audio.wav', audioArr);
-      zip.file(prprojDir + 'tts_subtitle.srt', ttsSrtData);
-
-      const zipBlob = await zip.generateAsync({ type: 'blob' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(zipBlob);
-      a.download = folderName + '.zip';
-      a.click();
-
-      status.textContent = '완료! 압축 풀고 오디오/SRT를 타임라인에 드래그하세요.';
-      document.getElementById('prproj-drop-zone').style.display = 'none';
-      toast('프로젝트 다운로드 완료!');
-    } catch(err) {
-      console.error('[Premiere] 에러:', err);
-      status.textContent = '처리 실패: ' + err.message;
-      toast('❌ ' + err.message);
-    }
-  }
 </script>
 </body>
 </html>

@@ -107,31 +107,6 @@
     </div>
   </div>
 
-  <!-- 편집기 프로젝트 파일 -->
-  <div class="card" style="margin-bottom:20px;">
-    <div class="card-header">
-      <div class="card-title">편집기 프로젝트 파일</div>
-    </div>
-    <div class="card-body">
-      <p style="font-size:12px;color:var(--muted2);margin-bottom:12px;">프리미어 프로젝트 폴더를 등록해두면, TTS 생성 후 바로 적용할 수 있습니다.</p>
-      <div id="prproj-drop" class="file-drop" style="margin-bottom:12px;padding:24px 16px;"
-        ondragover="event.preventDefault();this.classList.add('dragover')"
-        ondragleave="this.classList.remove('dragover')"
-        ondrop="event.preventDefault();this.classList.remove('dragover');handlePrprojDrop(event)">
-        프리미어 프로젝트 폴더를 여기에 드롭하거나 클릭하세요
-        <input type="file" webkitdirectory style="display:none;" id="prproj-folder-input" onchange="handlePrprojFolderSelect(event)">
-      </div>
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-        <div id="prproj-preset-name" style="flex:1;font-size:13px;color:var(--muted);">등록된 파일 없음</div>
-        <button class="btn btn-sm" style="background:var(--surface2);color:var(--muted2);border:1px solid var(--border);border-radius:8px;" onclick="removePrprojPreset()" id="prproj-remove-btn" style="display:none;">삭제</button>
-      </div>
-    </div>
-  </div>
-  <script>
-    document.getElementById('prproj-drop').addEventListener('click', () => {
-      document.getElementById('prproj-folder-input').click();
-    });
-  </script>
 
   <!-- 프리셋 탭 -->
   <div class="preset-tabs" id="preset-tabs"></div>
@@ -207,9 +182,6 @@
     if (elevenKey) { document.getElementById('eleven-key').value = elevenKey; document.getElementById('save-eleven-btn').textContent = '저장됨'; }
     const typecastKey = localStorage.getItem('typecast_api_key');
     if (typecastKey) { document.getElementById('typecast-key').value = typecastKey; document.getElementById('save-typecast-btn').textContent = '저장됨'; }
-
-    // 프로젝트 파일 프리셋 로드
-    loadPrprojPresetUI();
 
     // 프리셋 로드
     const savedPresets = localStorage.getItem('script_presets');
@@ -450,93 +422,6 @@
     isAnalyzing = false;
   }
 
-  // ── 프로젝트 파일 프리셋 ──
-
-  // 폴더에서 .prproj 찾아서 저장
-  async function findAndSavePrproj(files) {
-    let prprojFile = null;
-    for (const f of files) {
-      if (f.name.endsWith('.prproj')) { prprojFile = f; break; }
-    }
-    if (!prprojFile) { toast('폴더에 .prproj 파일이 없습니다'); return; }
-
-    try {
-      const arrBuf = await prprojFile.arrayBuffer();
-      const bytes = new Uint8Array(arrBuf);
-      let binary = '';
-      const chunkSize = 8192;
-      for (let i = 0; i < bytes.length; i += chunkSize) {
-        binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
-      }
-      localStorage.setItem('prproj_data', btoa(binary));
-      localStorage.setItem('prproj_name', prprojFile.name);
-      loadPrprojPresetUI();
-      toast(`${prprojFile.name} 등록 완료!`);
-    } catch(err) {
-      toast('❌ 파일 저장 실패: ' + err.message);
-    }
-  }
-
-  // 폴더 선택 (input)
-  function handlePrprojFolderSelect(e) {
-    findAndSavePrproj(Array.from(e.target.files));
-    e.target.value = '';
-  }
-
-  // 드롭
-  async function handlePrprojDrop(e) {
-    const items = e.dataTransfer.items;
-    const files = [];
-
-    // 폴더 드롭 처리
-    const readEntries = (entry) => new Promise(resolve => {
-      if (entry.isFile) {
-        entry.file(f => { files.push(f); resolve(); });
-      } else if (entry.isDirectory) {
-        const reader = entry.createReader();
-        reader.readEntries(async entries => {
-          for (const ent of entries) await readEntries(ent);
-          resolve();
-        });
-      } else { resolve(); }
-    });
-
-    if (items) {
-      for (const item of items) {
-        const entry = item.webkitGetAsEntry?.();
-        if (entry) await readEntries(entry);
-      }
-    }
-
-    // 폴더가 아닌 파일 직접 드롭도 지원
-    if (files.length === 0) {
-      files.push(...Array.from(e.dataTransfer.files));
-    }
-
-    findAndSavePrproj(files);
-  }
-
-  function removePrprojPreset() {
-    localStorage.removeItem('prproj_data');
-    localStorage.removeItem('prproj_name');
-    loadPrprojPresetUI();
-    toast('프로젝트 파일이 삭제되었습니다');
-  }
-
-  function loadPrprojPresetUI() {
-    const name = localStorage.getItem('prproj_name');
-    const nameEl = document.getElementById('prproj-preset-name');
-    const removeBtn = document.getElementById('prproj-remove-btn');
-    if (name) {
-      nameEl.textContent = name;
-      nameEl.style.color = 'var(--text)';
-      removeBtn.style.display = 'inline-block';
-    } else {
-      nameEl.textContent = '등록된 파일 없음';
-      nameEl.style.color = 'var(--muted)';
-      removeBtn.style.display = 'none';
-    }
-  }
 </script>
 </body>
 </html>
