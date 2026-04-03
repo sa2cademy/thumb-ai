@@ -1003,6 +1003,7 @@ JSON만 반환 (다른 텍스트 없이):
     const text = document.getElementById('script-editor').value;
     document.getElementById('script-content').textContent = text;
     closeScriptModal();
+    if (currentTTSService === 'typecast') buildSentenceEmotionPanel();
     toast('대본 수정됨');
   }
 
