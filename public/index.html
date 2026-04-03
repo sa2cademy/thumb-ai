@@ -485,13 +485,44 @@
     currentAbort = null;
   }
 
+  // ── 모달 + 뒤로가기 처리 ──
+  let _modalStack = 0;
+
+  function _pushModal() {
+    _modalStack++;
+    history.pushState({ modal: _modalStack }, '');
+  }
+  function _popModal() {
+    if (_modalStack > 0) { _modalStack--; history.back(); }
+  }
+
+  window.addEventListener('popstate', () => {
+    // 열려있는 모달 중 하나 닫기 (사진매칭 위 이미지 모달은 history 안 씀)
+    if (document.getElementById('modal').classList.contains('show') && !_modalFromPhotoMatch) {
+      document.getElementById('modal').classList.remove('show'); _modalStack = Math.max(0, _modalStack - 1); return;
+    }
+    if (document.getElementById('script-modal').classList.contains('show')) {
+      document.getElementById('script-modal').classList.remove('show'); _modalStack = Math.max(0, _modalStack - 1); return;
+    }
+    if (document.getElementById('photo-modal').style.display === 'flex') {
+      document.getElementById('photo-modal').style.display = 'none'; _modalStack = Math.max(0, _modalStack - 1); return;
+    }
+    if (document.getElementById('settings-modal').style.display === 'flex') {
+      document.getElementById('settings-modal').style.display = 'none';
+      document.getElementById('settings-iframe').src = '';
+      _modalStack = Math.max(0, _modalStack - 1); return;
+    }
+  });
+
   function openSettings() {
     document.getElementById('settings-iframe').src = '/script.html';
     document.getElementById('settings-modal').style.display = 'flex';
+    _pushModal();
   }
   function closeSettings() {
     document.getElementById('settings-modal').style.display = 'none';
     document.getElementById('settings-iframe').src = '';
+    _popModal();
   }
 
   function toast(msg, ms = 3500) {
@@ -965,17 +996,34 @@ JSON만 반환 (다른 텍스트 없이):
     });
   }
 
+  let _modalFromPhotoMatch = false;
+
   function openModal(dataUrl, idx, reason) {
     document.getElementById('modal-img').src = dataUrl;
-    document.getElementById('modal-reason').textContent = reason;
+    document.getElementById('modal-reason').textContent = reason || '';
     const btn = document.getElementById('modal-save');
-    btn.onclick = () => saveFrame(dataUrl, idx);
+    // 외부 URL이면 프록시로 다운로드
+    if (dataUrl.startsWith('http')) {
+      btn.onclick = () => {
+        const a = document.createElement('a');
+        a.href = `/api/image-proxy?url=${encodeURIComponent(dataUrl)}`;
+        a.download = `image_${idx || 0}.jpg`;
+        a.click();
+      };
+    } else {
+      btn.onclick = () => saveFrame(dataUrl, idx);
+    }
     document.getElementById('modal').classList.add('show');
+    // 사진매칭 모달 위에서 열린 경우 history 안 건드림
+    _modalFromPhotoMatch = document.getElementById('photo-modal').style.display === 'flex';
+    if (!_modalFromPhotoMatch) _pushModal();
   }
 
   function closeModal(e) {
     if (e && e.target !== e.currentTarget) return;
     document.getElementById('modal').classList.remove('show');
+    if (!_modalFromPhotoMatch) _popModal();
+    _modalFromPhotoMatch = false;
   }
 
   function copyCaptions() {
@@ -992,11 +1040,13 @@ JSON만 반환 (다른 텍스트 없이):
     const text = document.getElementById('script-content').textContent;
     document.getElementById('script-editor').value = text;
     document.getElementById('script-modal').classList.add('show');
+    _pushModal();
   }
 
   function closeScriptModal(e) {
     if (e && e.target !== e.currentTarget) return;
     document.getElementById('script-modal').classList.remove('show');
+    _popModal();
   }
 
   function saveScriptEdit() {
@@ -1926,9 +1976,11 @@ ${transcript}
 
   function openPhotoModal() {
     document.getElementById('photo-modal').style.display = 'flex';
+    _pushModal();
   }
   function closePhotoModal() {
     document.getElementById('photo-modal').style.display = 'none';
+    _popModal();
   }
 
   async function startPhotoSearch() {
@@ -1987,7 +2039,7 @@ ${transcript}
       <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;" id="photo-row-${index}">
         ${photos.length ? photos.map((p, pi) => `
           <img src="${p.link}" style="height:90px;border-radius:6px;cursor:pointer;border:2px solid transparent;flex-shrink:0;object-fit:cover;"
-            onclick="selectPhoto(this,${index},${pi})" onerror="this.style.display='none'" title="${(p.title||'').replace(/"/g,'')}">`).join('')
+            onclick="selectPhoto(this,${index},${pi})" ondblclick="openModal('${p.link.replace(/'/g,'\\&#39;')}',0,'')" onerror="this.style.display='none'" title="${(p.title||'').replace(/"/g,'')}">`).join('')
           : '<div style="font-size:11px;color:var(--muted);padding:16px;">사진을 찾지 못했습니다</div>'}
       </div>`;
     document.getElementById('photo-cards').appendChild(card);
@@ -2004,18 +2056,20 @@ ${transcript}
     if (!selected.length) { toast('사진을 선택해주세요'); return; }
     let count = 0;
     const zip = new JSZip();
-    for (const r of photoResults) {
+    for (let i = 0; i < photoResults.length; i++) {
+      const r = photoResults[i];
       if (r.selected === undefined) continue;
       const photo = r.photos[r.selected];
       if (!photo) continue;
       try {
-        const res = await fetch(photo.link);
+        // 서버 프록시로 CORS 우회
+        const res = await fetch(`/api/image-proxy?url=${encodeURIComponent(photo.link)}`);
         if (!res.ok) continue;
         const blob = await res.blob();
-        const ext = photo.link.match(/\.(jpg|jpeg|png|webp)/i)?.[1] || 'jpg';
-        zip.file(`${String(count + 1).padStart(2, '0')}_scene.${ext}`, blob);
+        const ext = photo.link.match(/\.(jpg|jpeg|png|webp|gif)/i)?.[1] || 'jpg';
+        zip.file(`${String(i + 1).padStart(2, '0')}_scene.${ext}`, blob);
         count++;
-      } catch(e) {}
+      } catch(e) { console.log('다운로드 실패:', photo.link, e.message); }
     }
     if (!count) { toast('다운로드할 사진이 없습니다'); return; }
     const zipBlob = await zip.generateAsync({ type: 'blob' });

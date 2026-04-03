@@ -1,11 +1,10 @@
-// ── 사진 찾기 엔진 (확장 프로그램 results.js 원본 1:1 포팅) ──
-// chrome.runtime.sendMessage → fetch, DOM 코드 제거, 모델 ID 수정만 적용
+// ── 사진 찾기 엔진 (results.js 원본 — searchImages만 fetch로 교체) ──
 const PF = (() => {
 
 const selectedPhotoKeys = new Set();
 
 // ─────────────────────────────────────────────
-// 상수
+//  상수
 // ─────────────────────────────────────────────
 const MIN_IMAGE_SIZE       = 400;  // Bing 크기 정보 없을 때 800/600 기본값 들어오니 너무 높게 잡지 않음
 const INITIAL_TARGET_RESULTS = 20;
@@ -16,6 +15,14 @@ const MAX_QUERY_COUNT      = 5;
 const MAX_QUERY_PAGE       = 91;   // Bing first=1,11,...,91 (10페이지)
 
 // ─────────────────────────────────────────────
+//  룩업 테이블
+// ─────────────────────────────────────────────
+const ROLE_LABELS = {
+  hook:'훅', reaction:'반응', emotion:'감정', pride:'자부심',
+  brand:'브랜드', achievement:'성과', location:'장소',
+  transition:'전환', outro:'마무리', general:'일반'
+};
+
 const KNOWN_ENTITY_RULES = [
   {
     label:'BTS', type:'group',
@@ -86,7 +93,6 @@ function isBlockedDomain(url) {
   } catch(_) { return false; }
 }
 
-
 function buildSentencePlan(index, sentences, representativeKeyword, gPlan, facePriorityLock) {
   const sentence = sentences[index] || '';
   const hasRepKw  = Boolean(String(representativeKeyword || '').trim());
@@ -120,7 +126,6 @@ function buildSentencePlan(index, sentences, representativeKeyword, gPlan, faceP
   };
 }
 
-
 function detectEntityFromText(text, anchorEntities=[], preferKnownOnly=false) {
   const lower = String(text||'').toLowerCase();
   for (const rule of KNOWN_ENTITY_RULES) {
@@ -134,7 +139,6 @@ function detectEntityFromText(text, anchorEntities=[], preferKnownOnly=false) {
   return explicit ? buildRawEntity(explicit, inferTypeFromLabel(explicit)) : null;
 }
 
-
 function buildRawEntity(label, type) {
   const safeLabel = String(label||'').trim();
   if (!safeLabel) return null;
@@ -144,7 +148,6 @@ function buildRawEntity(label, type) {
     queries:[]
   };
 }
-
 
 function inferTypeFromLabel(label) {
   const t = String(label||'');
@@ -158,7 +161,6 @@ function inferTypeFromLabel(label) {
   return 'general';
 }
 
-
 function shouldUseRepresentativeFallback(sentence, localEntity, representativeKeyword) {
   if (!representativeKeyword) return false;
   if (localEntity && KNOWN_ENTITY_RULES.some(r => r.label === localEntity.label)) return false;
@@ -171,8 +173,6 @@ function shouldUseRepresentativeFallback(sentence, localEntity, representativeKe
   return tokenize(text).length <= 6;
 }
 
-
-
 function buildVisualIntent(sentence, targetLabel, role, usedRepFallback) {
   if (usedRepFallback)         return `${targetLabel}를 대표하는 사진으로 설명 구간을 받쳐주는 장면`;
   if (role==='achievement')    return `${targetLabel}의 성과나 영향력이 느껴지는 장면`;
@@ -181,7 +181,6 @@ function buildVisualIntent(sentence, targetLabel, role, usedRepFallback) {
   if (role==='hook')           return `${targetLabel}에 시선이 바로 꽂히는 장면`;
   return `${targetLabel}가 또렷하게 보이는 대표 장면`;
 }
-
 
 function buildQueriesForEntity(entity, sentence, facePriorityLock) {
   if (!entity) return [];
@@ -212,7 +211,6 @@ function buildQueriesForEntity(entity, sentence, facePriorityLock) {
 
   return uniqueStrings(base).slice(0, MAX_QUERY_COUNT);
 }
-
 
 async function analyzeWholeScript(sentences, context, representativeKeyword, anthropicKey) {
   const fallback = buildFallbackGlobalPlan(sentences, context, representativeKeyword);
@@ -259,7 +257,6 @@ JSON 형식:
   }
 }
 
-
 function buildFallbackGlobalPlan(sentences, context, representativeKeyword) {
   const extracted = extractEntitiesFallback(sentences, context, representativeKeyword);
   return {
@@ -270,7 +267,6 @@ function buildFallbackGlobalPlan(sentences, context, representativeKeyword) {
   };
 }
 
-
 function extractEntitiesFallback(sentences, context, representativeKeyword) {
   const values = [];
   if (representativeKeyword) values.push(representativeKeyword);
@@ -280,7 +276,6 @@ function extractEntitiesFallback(sentences, context, representativeKeyword) {
   });
   return uniqueStrings(values).slice(0,8);
 }
-
 
 async function searchByPriorityQueries({ queries, plan, targetCount, previousStarts={}, cardIndex }) {
   const safeQueries = uniqueStrings(queries).slice(0, MAX_QUERY_COUNT);
@@ -313,6 +308,12 @@ async function searchByPriorityQueries({ queries, plan, targetCount, previousSta
   };
 }
 
+async function searchImages(query, start) {
+  const res = await fetch(`/api/image-search?q=${encodeURIComponent(query)}&first=${start}`);
+  if (!res.ok) throw new Error('검색 오류: ' + res.status);
+  const data = await res.json();
+  return data.items || [];
+}
 
 function evaluateCandidate(item, query, plan, cardIndex) {
   const width     = Number(item.sizewidth  || item.width  || 0);
@@ -357,23 +358,20 @@ function evaluateCandidate(item, query, plan, cardIndex) {
   if (plan.entity_type==='title'  && TITLE_POSITIVE.some(h  => haystack.includes(h))) score += 16;
   if (plan.entity_type==='symbol' && /flag|태극기/.test(haystack))                     score += 16;
 
-  if (selectedPhotoKeys.has(key)) score -= 40;
+  if (selectedPhotoKeys.has(key)) return null;
   if (score < 8) return null;
 
   return { ...item, width:width||800, height:height||600, title, hostname, link, thumbnail, score, sourceQuery:query };
 }
-
 
 function computeExactMatchScore(haystack, tokens) {
   const valid = (tokens||[]).filter(t => t && t.length >= 2);
   return valid.reduce((acc, t) => acc + (haystack.includes(String(t).toLowerCase()) ? 1 : 0), 0);
 }
 
-
 function requiresStrictMatch(type) {
   return ['group','brand','symbol','country','title'].includes(type); // person은 URL에 한글 없어서 제외
 }
-
 
 async function secondPassRerankPhotos(photos, plan, anthropicKey) {
   const unique = uniquePhotos(photos).sort((a,b) => b.score-a.score);
@@ -420,7 +418,6 @@ JSON 형식: {"ordered_indices":[1,2,3,4,5,6,7,8]}`;
   }
 }
 
-
 function findNextAvailablePhotoIndex(cardIndex, startIndex, excludeIdx=-1) {
   const state = cardStates[cardIndex];
   if (!state || !state.photos.length) return -1;
@@ -431,7 +428,6 @@ function findNextAvailablePhotoIndex(cardIndex, startIndex, excludeIdx=-1) {
   }
   return -1;
 }
-
 
 async function callClaudeForJson(prompt, anthropicKey, maxTokens=500) {
   const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -457,7 +453,6 @@ async function callClaudeForJson(prompt, anthropicKey, maxTokens=500) {
   return parsed;
 }
 
-
 function safeParseJson(text) {
   if (!text) return null;
   const t = String(text).trim();
@@ -468,7 +463,6 @@ function safeParseJson(text) {
   if (first>=0 && last>first) { try { return JSON.parse(t.slice(first, last+1)); } catch(_) {} }
   return null;
 }
-
 
 function guessSceneRole(sentence) {
   const t = String(sentence||'');
@@ -481,20 +475,16 @@ function guessSceneRole(sentence) {
   return 'general';
 }
 
-
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
-
 
 function ensureStringArray(value, fallback=[], max=6) {
   const base = Array.isArray(value) ? value : fallback;
   return base.map(item => truncateText(String(item||'').trim(), 40)).filter(Boolean).slice(0, max);
 }
 
-
 function uniqueStrings(arr) {
   return [...new Set((arr||[]).map(item => String(item||'').trim()).filter(Boolean))];
 }
-
 
 function uniquePhotos(photos) {
   const map = new Map();
@@ -507,32 +497,21 @@ function uniquePhotos(photos) {
   return [...map.values()];
 }
 
-
 function tokenize(text) {
   return String(text||'').split(/[^A-Za-z0-9가-힣]+/).map(t => t.trim()).filter(Boolean);
 }
-
 
 function stripHtml(value) {
   return String(value||'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim();
 }
 
-
 function getHostnameSafe(url) {
   try { return new URL(url).hostname.toLowerCase(); } catch(_) { return ''; }
 }
 
-
 function truncateText(text, max) {
   const s = String(text||'').trim();
   return s.length > max ? `${s.slice(0, max-1)}…` : s;
-}
-
-async function searchImages(query, start) {
-  const res = await fetch(`/api/image-search?q=${encodeURIComponent(query)}&first=${start}`);
-  if (!res.ok) throw new Error('검색 오류: ' + res.status);
-  const data = await res.json();
-  return data.items || [];
 }
 
 // ── 메인 진입점 ──
@@ -546,22 +525,23 @@ async function findPhotos(sentences, keyword, apiKey, onProgress) {
   const results = [];
   for (let i = 0; i < sentences.length; i++) {
     onProgress?.(`사진 검색 중... (${i+1}/${sentences.length})`);
+    try {
+      const plan = buildSentencePlan(i, sentences, keyword, globalPlan, facePriorityLock);
+      if (!plan) { results.push({sentence:sentences[i], plan:null, photos:[]}); continue; }
 
-    const plan = buildSentencePlan(i, sentences, keyword, globalPlan, facePriorityLock);
-    if (!plan) { results.push({sentence:sentences[i], plan:null, photos:[]}); continue; }
+      const searchResult = await searchByPriorityQueries({
+        queries: plan.search_queries, plan,
+        targetCount: INITIAL_TARGET_RESULTS,
+        previousStarts: {}, cardIndex: i
+      });
 
-    const searchResult = await searchByPriorityQueries({
-      queries: plan.search_queries, plan,
-      targetCount: INITIAL_TARGET_RESULTS,
-      previousStarts: {}, cardIndex: i
-    });
-
-    let photos = await secondPassRerankPhotos(searchResult.photos, plan, apiKey);
-
-    // 상위 사진 키 등록 (다음 문장 중복 방지)
-    photos.slice(0, 4).forEach(p => { const k = p.link || p.thumbnail; if (k) selectedPhotoKeys.add(k); });
-
-    results.push({ sentence: sentences[i], plan, photos: photos.slice(0, 6) });
+      const reranked = await secondPassRerankPhotos(searchResult.photos, plan, apiKey);
+      reranked.slice(0,4).forEach(p => { const k=p.link||p.thumbnail; if(k) selectedPhotoKeys.add(k); });
+      results.push({ sentence:sentences[i], plan, photos:reranked.slice(0,6) });
+    } catch(e) {
+      console.error('카드', i, '오류:', e);
+      results.push({sentence:sentences[i], plan:null, photos:[]});
+    }
   }
   return results;
 }

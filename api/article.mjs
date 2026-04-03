@@ -20,7 +20,7 @@ export default async function handler(req, res) {
 
     if (!pageRes.ok) throw new Error('페이지 로드 실패: ' + pageRes.status);
 
-    // 인코딩 감지 (EUC-KR 등 한국 사이트 대응)
+    // 인코딩 자동 감지
     const buf = await pageRes.arrayBuffer();
     let html;
     const contentType = pageRes.headers.get('content-type') || '';
@@ -28,16 +28,21 @@ export default async function handler(req, res) {
     let charset = charsetMatch ? charsetMatch[1].toLowerCase().replace(/['"]/g, '') : '';
 
     if (!charset) {
-      // HTML meta 태그에서 charset 탐지
-      const preview = new TextDecoder('ascii', { fatal: false }).decode(buf.slice(0, 2000));
-      const metaMatch = preview.match(/charset=["']?([^"'\s;>]+)/i);
+      const preview = new TextDecoder('ascii', { fatal: false }).decode(buf.slice(0, 4000));
+      const metaMatch = preview.match(/charset=["']?([^"'\s;>]+)/i)
+        || preview.match(/encoding=["']?([^"'\s;>]+)/i);
       if (metaMatch) charset = metaMatch[1].toLowerCase();
     }
 
-    if (charset === 'euc-kr' || charset === 'euckr' || charset === 'ks_c_5601-1987') {
+    const eucKrAliases = ['euc-kr','euckr','ks_c_5601-1987','cp949','ms949','windows-949','x-windows-949'];
+    if (eucKrAliases.includes(charset)) {
       html = new TextDecoder('euc-kr').decode(buf);
     } else {
+      // UTF-8로 시도, 깨지면 EUC-KR로 재시도
       html = new TextDecoder('utf-8').decode(buf);
+      if (html.includes('\uFFFD')) {
+        try { html = new TextDecoder('euc-kr').decode(buf); } catch {}
+      }
     }
 
     // 제목 추출
@@ -89,6 +94,8 @@ export default async function handler(req, res) {
       .replace(/&gt;/g, '>')
       .replace(/&#39;/g, "'")
       .replace(/&quot;/g, '"')
+      .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
+      .replace(/&#(\d+);/g, (_, dec) => String.fromCodePoint(parseInt(dec, 10)))
       .replace(/\n{3,}/g, '\n\n')
       .trim();
 
