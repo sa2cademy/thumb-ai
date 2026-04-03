@@ -20,7 +20,25 @@ export default async function handler(req, res) {
 
     if (!pageRes.ok) throw new Error('페이지 로드 실패: ' + pageRes.status);
 
-    const html = await pageRes.text();
+    // 인코딩 감지 (EUC-KR 등 한국 사이트 대응)
+    const buf = await pageRes.arrayBuffer();
+    let html;
+    const contentType = pageRes.headers.get('content-type') || '';
+    const charsetMatch = contentType.match(/charset=([^\s;]+)/i);
+    let charset = charsetMatch ? charsetMatch[1].toLowerCase().replace(/['"]/g, '') : '';
+
+    if (!charset) {
+      // HTML meta 태그에서 charset 탐지
+      const preview = new TextDecoder('ascii', { fatal: false }).decode(buf.slice(0, 2000));
+      const metaMatch = preview.match(/charset=["']?([^"'\s;>]+)/i);
+      if (metaMatch) charset = metaMatch[1].toLowerCase();
+    }
+
+    if (charset === 'euc-kr' || charset === 'euckr' || charset === 'ks_c_5601-1987') {
+      html = new TextDecoder('euc-kr').decode(buf);
+    } else {
+      html = new TextDecoder('utf-8').decode(buf);
+    }
 
     // 제목 추출
     const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);

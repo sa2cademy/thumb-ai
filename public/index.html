@@ -404,6 +404,25 @@
   </div>
 </div>
 
+<!-- 사진 찾기 섹션 (아코디언) -->
+<div id="photo-section" class="caption-box" style="display:none;">
+  <div class="caption-header" style="cursor:pointer;" onclick="togglePhotoAccordion()">
+    <span class="caption-label">장면별 사진 찾기</span>
+    <span id="photo-toggle" style="font-size:12px;color:var(--muted);margin-left:auto;margin-right:8px;">펼치기 ▼</span>
+  </div>
+  <div id="photo-body" style="display:none;">
+    <div style="display:flex;gap:8px;align-items:center;padding:10px 0 8px;flex-wrap:wrap;">
+      <input type="text" id="photo-keyword" placeholder="대표 키워드 (예: BTS, 이재용)" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text2);font-size:12px;padding:7px 10px;font-family:'Pretendard',sans-serif;outline:none;flex:1;min-width:140px;">
+      <button class="caption-copy" onclick="startPhotoSearch()" id="photo-search-btn">사진 찾기</button>
+    </div>
+    <div id="photo-status" style="display:none;font-size:12px;color:var(--muted);padding:4px 0 8px;"></div>
+    <div id="photo-cards" style="display:flex;flex-direction:column;gap:10px;max-height:500px;overflow-y:auto;"></div>
+    <div id="photo-done" style="display:none;margin-top:8px;">
+      <button class="caption-copy" onclick="downloadAllPhotos()">선택한 사진 다운로드</button>
+    </div>
+  </div>
+</div>
+
 <!-- 이미지 확대 모달 -->
 <div class="modal-overlay" id="modal" onclick="closeModal(event)">
   <div class="modal-content">
@@ -1701,17 +1720,24 @@ ${transcript}
     const combinedBlob = audioBufferToWav(rendered);
     audioCtx.close();
 
-    // SRT 생성 (실측 기반)
+    // SRT 생성 (실측 기반, 자막 끊김 없이 다음 문장 시작까지 유지)
     const GAP_SEC = GAP_SAMPLES / sr;
     let time = 0;
-    const srtEntries = sentences.map((s, i) => {
-      const start = time;
-      const end = time + durations[i];
-      time = end + GAP_SEC;
-      return { text: s, start, end };
-    });
+    const starts = [];
+    for (let i = 0; i < sentences.length; i++) {
+      starts.push(time);
+      time += durations[i];
+      if (i < sentences.length - 1) time += GAP_SEC;
+    }
+    const totalDur = time;
+    const srtEntries = sentences.map((s, i) => ({
+      text: s,
+      start: starts[i],
+      end: i < sentences.length - 1 ? starts[i + 1] : totalDur
+    }));
     const srtFinal = [];
-    for (const e of srtEntries) {
+    for (let i = 0; i < srtEntries.length; i++) {
+      const e = srtEntries[i];
       if (e.text.length <= 40) { srtFinal.push(e); continue; }
       const mid = Math.ceil(e.text.length / 2);
       const sp = e.text.indexOf(' ', mid - 10);
@@ -1731,6 +1757,7 @@ ${transcript}
     document.getElementById('tts-audio').src = ttsAudioUrl;
     document.getElementById('tts-audio').style.display = 'block';
     document.getElementById('tts-download').style.display = 'flex';
+    showPhotoSection();
     toast(msg);
   }
 
@@ -1756,6 +1783,11 @@ ${transcript}
     }
     if (cur.text.trim().length > 0) {
       sentences.push({ text: cur.text.trim(), start: cur.start, end: cur.end });
+    }
+
+    // 각 자막의 end를 다음 자막 start까지 연장 (자막 끊김 방지)
+    for (let i = 0; i < sentences.length - 1; i++) {
+      sentences[i].end = sentences[i + 1].start;
     }
 
     // 너무 긴 자막은 분할 (40자 초과 시)
@@ -1869,7 +1901,156 @@ ${transcript}
     return +h * 3600 + +m * 60 + +s + +ms / 1000;
   }
 
-  // ── 캡컷 프로젝트 내보내기 ──
+  // ── 장면별 사진 찾기 ──
+  const PHOTO_BANNED = ['차트','그래프','인포그래픽','통계','보고서','기사','뉴스','썸네일','캡처','가사','자막','문서','책'];
+  let photoResults = [];
+
+  function togglePhotoAccordion() {
+    const body = document.getElementById('photo-body');
+    const toggle = document.getElementById('photo-toggle');
+    if (body.style.display === 'none') {
+      body.style.display = 'block';
+      toggle.textContent = '접기 ▲';
+    } else {
+      body.style.display = 'none';
+      toggle.textContent = '펼치기 ▼';
+    }
+  }
+
+  function showPhotoSection() {
+    document.getElementById('photo-section').style.display = 'block';
+  }
+
+  async function startPhotoSearch() {
+    const apiKey = getApiKey();
+    if (!apiKey) { toast('Claude API 키를 입력해주세요'); return; }
+
+    const scriptEl = document.getElementById('script-content') || document.getElementById('caption-content');
+    const scriptText = scriptEl?.textContent || '';
+    if (!scriptText || scriptText.length < 10) { toast('대본이 없습니다'); return; }
+
+    const keyword = document.getElementById('photo-keyword').value.trim();
+    const sentences = scriptText.split('\n').map(l => l.replace(/^\d+s\s*/, '').trim()).filter(l => l.length > 1);
+    if (!sentences.length) { toast('대본 줄이 없습니다'); return; }
+
+    const btn = document.getElementById('photo-search-btn');
+    btn.disabled = true;
+    btn.textContent = '분석 중...';
+    const statusEl = document.getElementById('photo-status');
+    statusEl.style.display = 'block';
+    document.getElementById('photo-cards').innerHTML = '';
+    photoResults = [];
+
+    try {
+      statusEl.textContent = 'AI가 장면을 분석하고 있어요...';
+      const queries = await generatePhotoQueries(sentences, keyword, apiKey);
+
+      for (let i = 0; i < sentences.length; i++) {
+        statusEl.textContent = `사진 검색 중... (${i + 1}/${sentences.length})`;
+        const q = queries[i] || sentences[i];
+        const photos = await searchBingImages(q);
+        photoResults.push({ sentence: sentences[i], query: q, photos });
+        renderPhotoCard(i, sentences[i], q, photos);
+      }
+
+      statusEl.textContent = `${sentences.length}개 장면 사진 찾기 완료!`;
+      document.getElementById('photo-done').style.display = 'block';
+    } catch(e) {
+      statusEl.textContent = '실패: ' + e.message;
+      toast('사진 찾기 실패');
+    }
+    btn.disabled = false;
+    btn.textContent = '사진 찾기';
+  }
+
+  async function generatePhotoQueries(sentences, keyword, apiKey) {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-5-20250514', max_tokens: 1024,
+        messages: [{ role: 'user', content: `대본의 각 줄에 맞는 이미지 검색 쿼리를 만들어줘.
+대표 키워드: ${keyword || '(없음)'}
+
+대본:
+${sentences.map((s, i) => `${i + 1}. ${s}`).join('\n')}
+
+규칙:
+- 각 줄마다 Bing 이미지 검색에 최적화된 검색어 1개
+- 실제 사진이 나올 구체적 검색어 (인물명, 장소명 등)
+- 설명 문장은 대표 키워드 관련 사진으로
+- 차트/그래프/기사 키워드 금지
+
+JSON만 반환: {"queries":["검색어1","검색어2",...]}` }]
+      })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+    const text = data.content[0].text;
+    const json = JSON.parse(text.match(/\{[\s\S]*\}/)?.[0] || '{}');
+    return json.queries || sentences;
+  }
+
+  async function searchBingImages(query) {
+    const res = await fetch(`/api/image-search?q=${encodeURIComponent(query)}`);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return (data.items || []).filter(item => {
+      const hay = `${item.title} ${item.link}`.toLowerCase();
+      return !PHOTO_BANNED.some(b => hay.includes(b));
+    }).slice(0, 6);
+  }
+
+  function renderPhotoCard(index, sentence, query, photos) {
+    const card = document.createElement('div');
+    card.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;';
+    card.innerHTML = `
+      <div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:8px;">
+        <span style="background:var(--accent);color:#fff;font-size:11px;font-weight:700;width:22px;height:22px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${index + 1}</span>
+        <div style="font-size:12px;color:var(--muted2);line-height:1.5;">${sentence}</div>
+      </div>
+      <div style="font-size:10px;color:var(--muted);margin-bottom:6px;">검색: ${query}</div>
+      <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;" id="photo-row-${index}">
+        ${photos.length ? photos.map((p, pi) => `
+          <img src="${p.link}" style="height:80px;border-radius:6px;cursor:pointer;border:2px solid transparent;flex-shrink:0;object-fit:cover;"
+            onclick="selectPhoto(this,${index},${pi})" onerror="this.style.display='none'" title="${(p.title||'').replace(/"/g,'')}">`).join('')
+          : '<div style="font-size:11px;color:var(--muted);padding:20px;">사진을 찾지 못했습니다</div>'}
+      </div>`;
+    document.getElementById('photo-cards').appendChild(card);
+  }
+
+  function selectPhoto(img, cardIdx, photoIdx) {
+    document.getElementById(`photo-row-${cardIdx}`).querySelectorAll('img').forEach(i => i.style.borderColor = 'transparent');
+    img.style.borderColor = 'var(--accent)';
+    photoResults[cardIdx].selected = photoIdx;
+  }
+
+  async function downloadAllPhotos() {
+    const selected = photoResults.filter(r => r.selected !== undefined);
+    if (!selected.length) { toast('사진을 선택해주세요'); return; }
+    let count = 0;
+    const zip = new JSZip();
+    for (const r of photoResults) {
+      if (r.selected === undefined) continue;
+      const photo = r.photos[r.selected];
+      if (!photo) continue;
+      try {
+        const res = await fetch(photo.link);
+        if (!res.ok) continue;
+        const blob = await res.blob();
+        const ext = photo.link.match(/\.(jpg|jpeg|png|webp)/i)?.[1] || 'jpg';
+        zip.file(`${String(count + 1).padStart(2, '0')}_scene.${ext}`, blob);
+        count++;
+      } catch(e) {}
+    }
+    if (!count) { toast('다운로드할 사진이 없습니다'); return; }
+    const zipBlob = await zip.generateAsync({ type: 'blob' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(zipBlob);
+    a.download = 'scene_photos.zip';
+    a.click();
+    toast(`${count}장 사진 다운로드 완료!`);
+  }
 </script>
 </body>
 </html>
