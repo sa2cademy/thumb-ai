@@ -3,6 +3,9 @@
   "functions": {
     "api/download.mjs": {
       "maxDuration": 60
+    },
+    "api/video-info.mjs": {
+      "maxDuration": 30
     }
   }
 }

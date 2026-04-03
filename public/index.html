@@ -90,7 +90,6 @@
   .btn-ghost:hover { background: var(--surface3); border-color: var(--border2); color: var(--text); }
 
   /* 진행 상태 */
-  #status-box { display: none; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 20px; }
   .status-label { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted2); margin-bottom: 12px; font-weight: 600; }
   .progress-wrap { background: var(--border); border-radius: 100px; height: 4px; margin-bottom: 10px; overflow: hidden; }
   .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); border-radius: 100px; transition: width 0.4s ease; width: 0%; }
@@ -116,15 +115,6 @@
   #preview-video { width: 100%; max-height: 360px; border-radius: var(--radius-sm); background: #000; object-fit: contain; }
   .video-info { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; gap: 12px; }
   .video-meta { font-size: 12px; color: var(--muted); }
-
-  /* 프레임 그리드 */
-  #frames-section { display: none; }
-  .frames-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
-  .frame-item { aspect-ratio: 9/16; border-radius: 4px; overflow: hidden; border: 2px solid transparent; position: relative; transition: border-color 0.2s; }
-  .frame-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .frame-num { position: absolute; bottom: 3px; left: 3px; background: rgba(0,0,0,0.75); color: #fff; font-size: 9px; padding: 2px 5px; border-radius: 3px; font-weight: 700; }
-  .frame-item.picked { border-color: var(--accent); }
-  .frame-item.picked::after { content: '★'; position: absolute; top: 3px; right: 3px; background: var(--accent); color: #fff; font-size: 9px; width: 16px; height: 16px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
 
   /* 결과 */
   #result-section { display: none; animation: slideUp 0.4s ease; }
@@ -247,13 +237,14 @@
         <p class="note">YouTube → 영상 음성 인식 · 기사 URL → 본문 추출 → 대본 생성</p>
 
         <!-- 영상 파일 드롭존 (서버 다운로드 실패 시 표시) -->
-        <div id="video-drop-zone" style="display:none;margin-top:12px;border:2px dashed var(--border);border-radius:var(--radius);padding:28px 16px;text-align:center;cursor:pointer;transition:all 0.2s;"
-          ondragover="event.preventDefault();this.style.borderColor='var(--accent)';this.style.color='var(--accent)'"
-          ondragleave="this.style.borderColor='var(--border)';this.style.color='var(--muted2)'"
-          ondrop="event.preventDefault();this.style.borderColor='var(--border)';this.style.color='var(--muted2)';handleVideoDrop(event)"
+        <div id="video-drop-zone" style="display:none;margin-top:12px;border:2px dashed var(--accent);border-radius:var(--radius);padding:32px 16px;text-align:center;cursor:pointer;transition:all 0.2s;background:var(--accent-bg);"
+          ondragover="event.preventDefault();this.style.borderColor='var(--accent2)';this.style.background='var(--accent-glow)'"
+          ondragleave="this.style.borderColor='var(--accent)';this.style.background='var(--accent-bg)'"
+          ondrop="event.preventDefault();this.style.borderColor='var(--accent)';this.style.background='var(--accent-bg)';handleVideoDrop(event)"
           onclick="document.getElementById('video-file-input').click()">
-          <div style="font-size:13px;color:var(--muted2);font-weight:600;margin-bottom:6px;">서버 다운로드가 안 돼요</div>
-          <div style="font-size:12px;color:var(--muted);">영상 파일을 여기에 드래그하거나 클릭해서 선택하세요</div>
+          <div style="font-size:28px;margin-bottom:8px;">📁</div>
+          <div style="font-size:14px;color:var(--text);font-weight:600;margin-bottom:4px;">영상 파일을 직접 올려주세요</div>
+          <div style="font-size:12px;color:var(--muted);line-height:1.6;">YouTube에서 영상을 다운로드한 후<br>여기에 드래그하거나 클릭해서 선택하세요</div>
           <input type="file" id="video-file-input" accept="video/*" style="display:none;" onchange="handleVideoFile(event)">
         </div>
 
@@ -320,10 +311,11 @@
   <div class="loading-bar" id="loading-bar">
     <div class="loading-inner">
       <div class="spinner"></div>
-      <div>
+      <div style="flex:1;">
         <div class="loading-step" id="loading-step">처리 중...</div>
         <div class="loading-sub loading-pulse" id="loading-sub"></div>
       </div>
+      <button id="loading-cancel-btn" onclick="cancelLoading()" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--muted2);font-size:12px;padding:6px 14px;cursor:pointer;font-family:'Pretendard',sans-serif;font-weight:500;transition:all 0.2s;white-space:nowrap;">취소</button>
     </div>
     <div class="loading-progress"><div class="loading-progress-fill" id="loading-fill"></div></div>
   </div>
@@ -427,11 +419,27 @@
 <div class="toast" id="toast"></div>
 
 <script>
-  let frames = [];
-
   // API 키는 설정 페이지에서 저장, 여기서는 localStorage에서 읽기만
   function getApiKey() { return localStorage.getItem('claude_api_key') || ''; }
   function getElevenKey() { return localStorage.getItem('eleven_api_key') || ''; }
+
+  // ── 취소 제어 ──
+  let currentAbort = null;
+
+  function cancelLoading() {
+    if (currentAbort) { currentAbort.abort(); currentAbort = null; }
+    if (whisperWorker) { whisperWorker.terminate(); whisperWorker = null; }
+    hideLoading();
+    toast('작업이 취소되었습니다');
+    document.getElementById('load-btn').disabled = false;
+    document.getElementById('load-btn').textContent = '불러오기';
+    const sttBtn = document.getElementById('stt-btn');
+    sttBtn.disabled = false; sttBtn.textContent = '🎙 음성 인식';
+    const ttsBtn = document.getElementById('tts-btn');
+    ttsBtn.disabled = false; ttsBtn.textContent = '음성 생성';
+    const genBtn = document.getElementById('gen-script-btn');
+    genBtn.disabled = false; genBtn.textContent = '대본 생성';
+  }
 
   // ── 로딩 표시 ──
   function showLoading(step, sub, pct) {
@@ -440,10 +448,13 @@
     document.getElementById('loading-step').textContent = step;
     document.getElementById('loading-sub').textContent = sub || '';
     if (pct !== undefined) document.getElementById('loading-fill').style.width = pct + '%';
+    document.getElementById('loading-cancel-btn').style.display = 'block';
   }
   function hideLoading() {
     document.getElementById('loading-bar').classList.remove('show');
     document.getElementById('loading-fill').style.width = '0%';
+    document.getElementById('loading-cancel-btn').style.display = 'none';
+    currentAbort = null;
   }
 
   function toast(msg, ms = 3500) {
@@ -453,13 +464,37 @@
     setTimeout(() => t.classList.remove('show'), ms);
   }
 
-  function setProgress(pct, text) {
-    document.getElementById('progress-fill').style.width = pct + '%';
-    document.getElementById('status-text').textContent = text;
+  // ── API 사용량 추적 ──
+  let sessionUsage = { input: 0, output: 0, cost: 0 };
+
+  // Opus: $15/M input, $75/M output
+  const PRICE_INPUT = 15 / 1_000_000;
+  const PRICE_OUTPUT = 75 / 1_000_000;
+
+  function trackUsage(label, usage) {
+    if (!usage) return;
+    const inp = usage.input_tokens || 0;
+    const out = usage.output_tokens || 0;
+    const cost = inp * PRICE_INPUT + out * PRICE_OUTPUT;
+    sessionUsage.input += inp;
+    sessionUsage.output += out;
+    sessionUsage.cost += cost;
+    updateUsageDisplay();
+    console.log(`[비용] ${label}: ${inp}+${out} 토큰, $${cost.toFixed(4)} (누적 $${sessionUsage.cost.toFixed(4)})`);
   }
 
-  function showStatus(v) {
-    document.getElementById('status-box').style.display = v ? 'block' : 'none';
+  function updateUsageDisplay() {
+    let el = document.getElementById('usage-display');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'usage-display';
+      el.style.cssText = 'position:fixed;bottom:16px;right:16px;background:var(--surface);backdrop-filter:blur(20px);border:1px solid var(--border);border-radius:10px;padding:8px 14px;font-size:11px;color:var(--muted2);z-index:999;cursor:pointer;transition:all 0.2s;';
+      el.title = '클릭하여 초기화';
+      el.onclick = () => { sessionUsage = { input: 0, output: 0, cost: 0 }; el.remove(); toast('사용량 초기화'); };
+      document.body.appendChild(el);
+    }
+    const won = Math.round(sessionUsage.cost * 1400);
+    el.innerHTML = `<span style="color:var(--text);font-weight:600;">$${sessionUsage.cost.toFixed(4)}</span> <span style="color:var(--muted);">(~${won.toLocaleString()}원)</span> · <span style="color:var(--muted);">${sessionUsage.input.toLocaleString()}+${sessionUsage.output.toLocaleString()} 토큰</span>`;
   }
 
   // ── 탭 전환 ──
@@ -560,6 +595,7 @@ JSON만 반환 (다른 텍스트 없이):
 
       const apiData = await apiRes.json();
       if (apiData.error) throw new Error(apiData.error.message);
+      trackUsage('썸네일 분석', apiData.usage);
       const raw = apiData.content[0].text.replace(/```json|```/g, '').trim();
       const { picks } = JSON.parse(raw);
 
@@ -633,7 +669,8 @@ JSON만 반환 (다른 텍스트 없이):
     showLoading('기사 본문 추출 중', '페이지에서 텍스트를 가져오고 있어요', 30);
 
     try {
-      const res = await fetch(`/api/article?url=${encodeURIComponent(url)}`);
+      currentAbort = new AbortController();
+      const res = await fetch(`/api/article?url=${encodeURIComponent(url)}`, { signal: currentAbort.signal });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.error || '기사 추출 실패 (' + res.status + ')');
@@ -658,8 +695,9 @@ JSON만 반환 (다른 텍스트 없이):
       if (genBtn && genBtn.style.display !== 'none') genBtn.classList.add('btn-glow');
 
     } catch(e) {
-      toast('기사 추출 실패: ' + e.message);
       hideLoading();
+      if (e.name === 'AbortError') return;
+      toast('기사 추출 실패: ' + e.message);
     }
 
     btn.disabled = false;
@@ -667,6 +705,8 @@ JSON만 반환 (다른 텍스트 없이):
   }
 
   // ── YouTube 영상 불러오기 ──
+  let ytVideoInfo = null;
+
   async function loadVideo() {
     const url = document.getElementById('yt-url').value.trim();
     if (!url) { toast('URL을 입력해주세요'); return; }
@@ -678,7 +718,8 @@ JSON만 반환 (다른 텍스트 없이):
 
     try {
       console.log('[영상] fetch 시작:', url);
-      const res = await fetch(`/api/download?url=${encodeURIComponent(url)}`);
+      currentAbort = new AbortController();
+      const res = await fetch(`/api/download?url=${encodeURIComponent(url)}`, { signal: currentAbort.signal });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.error || '영상 불러오기 실패 (' + res.status + ')');
@@ -699,11 +740,62 @@ JSON만 반환 (다른 텍스트 없이):
       toast('영상 불러오기 완료!');
       document.getElementById('stt-btn').classList.add('btn-glow');
     } catch(e) {
-      console.error('[영상] 다운로드 실패:', e.message);
-      hideLoading();
-      // 드롭존 표시
-      document.getElementById('video-drop-zone').style.display = 'block';
-      toast('서버 다운로드 실패 - 영상 파일을 직접 올려주세요');
+      console.error('[영상] 다운로드 실패, video-info fallback:', e.message);
+      if (e.name === 'AbortError') { hideLoading(); return; }
+
+      // 영상 다운로드 실패 → YouTube 자막 + 스토리보드로 fallback
+      try {
+        showLoading('영상 정보 가져오는 중', 'YouTube에서 자막과 프레임을 추출하고 있어요', 30);
+        const infoRes = await fetch(`/api/video-info?url=${encodeURIComponent(url)}`);
+        if (!infoRes.ok) throw new Error('영상 정보 가져오기 실패');
+        ytVideoInfo = await infoRes.json();
+        console.log('[영상] video-info:', ytVideoInfo);
+
+        // 자막이 있으면 표시 (Whisper 대신 YouTube 자막)
+        if (ytVideoInfo.transcript && ytVideoInfo.transcript.length > 0) {
+          const html = ytVideoInfo.transcript.map(t => {
+            const sec = Math.floor(t.start);
+            return `<span style="color:var(--muted);font-size:11px;">${sec}s</span> ${t.text}`;
+          }).join('<br>');
+          document.getElementById('caption-content').innerHTML = html;
+          document.getElementById('caption-section').style.display = 'block';
+          updateCaptionPreview();
+          showPresetSelect();
+          const genBtn = document.getElementById('gen-script-btn');
+          if (genBtn && genBtn.style.display !== 'none') genBtn.classList.add('btn-glow');
+        }
+
+        // 스토리보드에서 프레임 추출
+        if (ytVideoInfo.storyboards && ytVideoInfo.storyboards.length > 0) {
+          showLoading('프레임 추출 중', '스토리보드에서 프레임을 가져오고 있어요', 50);
+          frames = await extractStoryboardFrames(ytVideoInfo.storyboards, ytVideoInfo.duration);
+        }
+
+        // 썸네일로 미리보기
+        const videoId = url.match(/(?:shorts\/|v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/)?.[1];
+        if (videoId) {
+          document.getElementById('preview-video').poster = `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`;
+          document.getElementById('preview-video').removeAttribute('src');
+        }
+        document.getElementById('video-meta').textContent = `${ytVideoInfo.title || ''} · ${ytVideoInfo.duration || 0}초`;
+        document.getElementById('video-wrap').style.display = 'block';
+
+        if (!frames.length) {
+          document.getElementById('video-drop-zone').style.display = 'block';
+        }
+
+        hideLoading();
+        const msgs = [];
+        if (ytVideoInfo.transcript?.length) msgs.push('자막 추출 완료');
+        if (frames.length) msgs.push(`프레임 ${frames.length}장 추출`);
+        toast(msgs.length ? msgs.join(' · ') : '영상 정보를 가져왔어요');
+
+      } catch(e2) {
+        console.error('[영상] video-info도 실패:', e2.message);
+        hideLoading();
+        document.getElementById('video-drop-zone').style.display = 'block';
+        toast('영상 파일을 직접 올려주세요');
+      }
     }
 
     btn.disabled = false;
@@ -734,6 +826,44 @@ JSON만 반환 (다른 텍스트 없이):
     document.getElementById('video-drop-zone').style.display = 'none';
     toast('영상 로드 완료!');
     document.getElementById('stt-btn').classList.add('btn-glow');
+  }
+
+  // ── 스토리보드 프레임 추출 (YouTube fallback) ──
+  async function extractStoryboardFrames(storyboards, duration) {
+    const sb = storyboards.reduce((best, b) => (b.width > (best?.width || 0)) ? b : best, null);
+    if (!sb || !sb.url) return [];
+
+    const result = [];
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = sb.width;
+    canvas.height = sb.height;
+
+    const totalPages = Math.ceil(sb.count / (sb.cols * sb.rows));
+    const interval = sb.interval / 1000;
+
+    for (let page = 0; page < totalPages && result.length < 60; page++) {
+      const imgUrl = sb.url.replace('$M', page);
+      try {
+        const img = await new Promise((resolve, reject) => {
+          const i = new Image();
+          i.crossOrigin = 'anonymous';
+          i.onload = () => resolve(i);
+          i.onerror = reject;
+          i.src = imgUrl;
+        });
+        for (let r = 0; r < sb.rows; r++) {
+          for (let c = 0; c < sb.cols; c++) {
+            const idx = page * sb.cols * sb.rows + r * sb.cols + c;
+            if (idx >= sb.count) break;
+            ctx.drawImage(img, c * sb.width, r * sb.height, sb.width, sb.height, 0, 0, sb.width, sb.height);
+            result.push({ index: idx, time: idx * interval, dataUrl: canvas.toDataURL('image/jpeg', 0.85) });
+          }
+        }
+      } catch(e) { console.log('[스토리보드] 페이지', page, '실패'); }
+    }
+    console.log('[스토리보드]', result.length, '프레임 추출');
+    return result;
   }
 
   // ── 프레임 추출 ──
@@ -798,115 +928,6 @@ JSON만 반환 (다른 텍스트 없이):
     });
   }
 
-  // ── 메인 분석 ──
-  async function analyzeVideo() {
-    const apiKey = getApiKey();
-    if (!apiKey) { toast('Claude API 키를 입력해주세요'); return; }
-
-    const video = document.getElementById('preview-video');
-    if (!video.src || !video.duration) { toast('먼저 영상을 불러오세요'); return; }
-
-    document.getElementById('analyze-btn').disabled = true;
-    document.getElementById('result-section').style.display = 'none';
-    frames = [];
-    showStatus(true);
-    setProgress(5, '준비 중...');
-
-    try {
-      // 프레임 수: 초당 1장, 최소 10 최대 60
-      const count = Math.min(60, Math.max(10, Math.round(video.duration * 1)));
-      frames = await extractFrames(video, count);
-
-      // 그리드 이미지 생성
-      setProgress(60, 'AI 분석 중...');
-      const gridImg = await buildGrid(frames);
-      const b64 = gridImg.split(',')[1];
-
-      // Claude API 호출
-      const apiRes = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true'
-        },
-        body: JSON.stringify({
-          model: 'claude-opus-4-5',
-          max_tokens: 512,
-          messages: [{
-            role: 'user',
-            content: [
-              { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: b64 } },
-              { type: 'text', text: `유튜브 쇼츠 영상에서 추출한 ${frames.length}개 프레임입니다. 각 프레임에 번호와 타임스탬프가 있습니다.
-
-썸네일로 가장 좋은 프레임 4개를 선택해주세요.
-
-선택 기준 (우선순위 순):
-1. 인물의 얼굴이 크고 선명하게 보이는 프레임
-2. 선명하고 밝은 화면
-3. 자막/텍스트/오버레이가 없는 깨끗한 프레임 우선 (자막 있으면 감점)
-4. 인물이 중앙에 있고 잘리지 않은 구도
-
-reason 작성 규칙 (매우 중요):
-- 프레임에 실제로 보이는 것만 묘사하세요.
-- 사람 얼굴이 안 보이면 "얼굴 안 보임"이라고 쓰세요.
-- 자막/텍스트가 보이면 반드시 "자막 있음"이라고 쓰세요.
-- 손만 보이면 "손만 보임"이라고 쓰세요.
-- "미소", "표정" 등은 얼굴이 실제로 선명하게 보일 때만 쓰세요.
-- 절대로 추측하거나 꾸며내지 마세요.
-
-JSON만 반환 (다른 텍스트 없이):
-{"picks":[{"rank":1,"frame":프레임번호,"reason":"실제 보이는 내용(25자이내)"},{"rank":2,"frame":프레임번호,"reason":"이유"},{"rank":3,"frame":프레임번호,"reason":"이유"},{"rank":4,"frame":프레임번호,"reason":"이유"}]}` }
-            ]
-          }]
-        })
-      });
-
-      console.log('[분석] Claude API 응답 상태:', apiRes.status);
-      const apiData = await apiRes.json();
-      if (apiData.error) throw new Error(apiData.error.message);
-
-      const raw = apiData.content[0].text.replace(/```json|```/g, '').trim();
-      console.log('[분석] Claude 응답:', raw);
-      const { picks } = JSON.parse(raw);
-
-      setProgress(100, '완료!');
-      setTimeout(() => { showStatus(false); renderResults(picks); }, 400);
-
-    } catch(e) {
-      showStatus(false);
-      toast('❌ ' + e.message);
-      console.error(e);
-    }
-
-    document.getElementById('analyze-btn').disabled = false;
-  }
-
-  function renderResults(picks) {
-    const grid = document.getElementById('result-grid');
-    grid.innerHTML = '';
-    picks.forEach(p => {
-      const frame = frames.find(f => f.index === p.frame);
-      if (!frame) return;
-      const div = document.createElement('div');
-      div.className = 'result-card' + (p.rank === 1 ? ' best' : '');
-      div.onclick = () => openModal(frame.dataUrl, frame.index, p.reason);
-      div.innerHTML = `
-        <div class="img-wrap">
-          <div class="result-rank">${p.rank === 1 ? '🥇 BEST' : '#' + p.rank}</div>
-          <img src="${frame.dataUrl}">
-        </div>
-        <div class="result-meta">
-          <div class="result-reason">${p.reason}</div>
-        </div>`;
-      grid.appendChild(div);
-    });
-
-    document.getElementById('result-section').style.display = 'block';
-    document.getElementById('result-section').scrollIntoView({ behavior: 'smooth' });
-  }
-
   function openModal(dataUrl, idx, reason) {
     document.getElementById('modal-img').src = dataUrl;
     document.getElementById('modal-reason').textContent = reason;
@@ -953,11 +974,6 @@ JSON만 반환 (다른 텍스트 없이):
     a.href = dataUrl;
     a.download = `thumbnail_${idx}.jpg`;
     a.click();
-  }
-
-  function resetAll() {
-    document.getElementById('result-section').style.display = 'none';
-    frames = [];
   }
 
   // ── 음성 인식 (Whisper in Web Worker) ──
@@ -1055,7 +1071,21 @@ JSON만 반환 (다른 텍스트 없이):
   function showPresetSelect() {
     const presets = JSON.parse(localStorage.getItem('script_presets') || '[]');
     const ready = presets.filter(p => p.styleGuide);
-    if (!ready.length) return;
+
+    // 프리셋 없으면 안내 메시지 표시
+    const noPresetMsg = document.getElementById('no-preset-msg');
+    if (!ready.length) {
+      if (!noPresetMsg) {
+        const msg = document.createElement('div');
+        msg.id = 'no-preset-msg';
+        msg.style.cssText = 'margin-top:12px;padding:12px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;font-size:13px;color:var(--muted2);display:flex;align-items:center;gap:8px;justify-content:space-between;';
+        msg.innerHTML = '대본 생성을 하려면 프리셋을 먼저 만들어주세요 <a href="/script.html" style="color:var(--accent);font-weight:600;text-decoration:none;white-space:nowrap;">설정으로 이동</a>';
+        document.getElementById('caption-section').appendChild(msg);
+      }
+      return;
+    }
+
+    if (noPresetMsg) noPresetMsg.remove();
 
     const select = document.getElementById('preset-select');
     select.innerHTML = '';
@@ -1095,10 +1125,13 @@ JSON만 반환 (다른 텍스트 없이):
     document.getElementById('script-content').textContent = '대본 생성 중...';
 
     try {
+      currentAbort = new AbortController();
+      showLoading('대본 생성 중', 'Claude가 대본을 작성하고 있어요', 50);
       const samplesText = samples.map((s, i) => `[표본 ${i + 1}]\n${s}`).join('\n\n---\n\n');
 
       const res = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
+        signal: currentAbort.signal,
         headers: {
           'Content-Type': 'application/json',
           'x-api-key': apiKey,
@@ -1131,11 +1164,15 @@ ${transcript}
       if (data.error) throw new Error(data.error.message);
 
       document.getElementById('script-content').textContent = data.content[0].text;
+      hideLoading();
+      trackUsage('대본 생성', data.usage);
       toast('대본 생성 완료!');
       showTTSControls();
       document.getElementById('tts-btn').classList.add('btn-glow');
 
     } catch(e) {
+      hideLoading();
+      if (e.name === 'AbortError') return;
       document.getElementById('script-content').textContent = '대본 생성 실패: ' + e.message;
       toast('대본 생성 실패');
       console.error(e);
@@ -1614,149 +1651,78 @@ ${transcript}
     if (!apiKey) throw new Error('Typecast API 키가 없습니다');
 
     const selects = document.querySelectorAll('.tc-emotion-select');
-    const sentences = tcSentences.length > 0 ? tcSentences : [text];
+    const sentences = tcSentences.length > 0 ? tcSentences : splitSentences(text);
     const emotions = sentences.map((_, i) => selects[i]?.value || 'normal');
-    const allSame = emotions.every(e => e === emotions[0]);
 
     const btn = document.getElementById('tts-btn');
 
-    if (allSame) {
-      // 감정 동일 → 전체 텍스트 한번에 생성
-      btn.textContent = '생성 중...';
+    // 문장별 생성 후 합치기 (실측 duration 기반 SRT)
+    const audioBuffers = [];
+    const audioCtx = new AudioContext();
+
+    for (let i = 0; i < sentences.length; i++) {
+      btn.textContent = `생성 중... (${i + 1}/${sentences.length})`;
+
       const res = await fetch('https://api.typecast.ai/v1/text-to-speech', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-API-KEY': apiKey },
         body: JSON.stringify({
-          text, model: 'ssfm-v30', voice_id: selectedVoice.voice_id,
-          prompt: { emotion_type: 'preset', emotion_preset: emotions[0] }
+          text: sentences[i], model: 'ssfm-v30', voice_id: selectedVoice.voice_id,
+          prompt: { emotion_type: 'preset', emotion_preset: emotions[i] }
         })
       });
-      if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.message || e.detail || '생성 실패'); }
+      if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.message || e.detail || `문장 ${i+1} 실패`); }
 
-      const blob = await res.blob();
-      const tmpUrl = URL.createObjectURL(blob);
-      const duration = await getAudioDuration(tmpUrl);
-      URL.revokeObjectURL(tmpUrl);
-      ttsSrtData = buildSRTFromText(text, duration);
-      showTTSResult(blob, '음성 생성 완료!');
-
-    } else {
-      // 감정 다름 → 문장별 생성 후 Web Audio API로 합치기
-      const audioBuffers = [];
-      const audioCtx = new AudioContext();
-
-      for (let i = 0; i < sentences.length; i++) {
-        btn.textContent = `생성 중... (${i + 1}/${sentences.length})`;
-
-        const res = await fetch('https://api.typecast.ai/v1/text-to-speech', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-API-KEY': apiKey },
-          body: JSON.stringify({
-            text: sentences[i], model: 'ssfm-v30', voice_id: selectedVoice.voice_id,
-            prompt: { emotion_type: 'preset', emotion_preset: emotions[i] }
-          })
-        });
-        if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.message || e.detail || `문장 ${i+1} 실패`); }
-
-        const arrBuf = await res.arrayBuffer();
-        const decoded = await audioCtx.decodeAudioData(arrBuf);
-        audioBuffers.push(decoded);
-      }
-
-      // AudioBuffer 합치기
-      const sr = audioBuffers[0].sampleRate;
-      const numCh = audioBuffers[0].numberOfChannels;
-      const GAP_SAMPLES = Math.round(0.05 * sr); // 50ms 간격
-      const totalLen = audioBuffers.reduce((sum, b) => sum + b.length, 0) + GAP_SAMPLES * (audioBuffers.length - 1);
-
-      const offCtx = new OfflineAudioContext(numCh, totalLen, sr);
-      let offset = 0;
-      const durations = [];
-      for (let i = 0; i < audioBuffers.length; i++) {
-        const src = offCtx.createBufferSource();
-        src.buffer = audioBuffers[i];
-        src.connect(offCtx.destination);
-        src.start(offset / sr);
-        durations.push(audioBuffers[i].duration);
-        offset += audioBuffers[i].length;
-        if (i < audioBuffers.length - 1) offset += GAP_SAMPLES;
-      }
-
-      const rendered = await offCtx.startRendering();
-      const combinedBlob = audioBufferToWav(rendered);
-      audioCtx.close();
-
-      // SRT 생성 (실측 기반)
-      const GAP_SEC = GAP_SAMPLES / sr;
-      let time = 0;
-      const srtEntries = sentences.map((s, i) => {
-        const start = time;
-        const end = time + durations[i];
-        time = end + GAP_SEC;
-        return { text: s, start, end };
-      });
-      const srtFinal = [];
-      for (const e of srtEntries) {
-        if (e.text.length <= 40) { srtFinal.push(e); continue; }
-        const mid = Math.ceil(e.text.length / 2);
-        const sp = e.text.indexOf(' ', mid - 10);
-        const idx = sp > 0 ? sp : mid;
-        const mt = e.start + (e.end - e.start) * (idx / e.text.length);
-        srtFinal.push({ text: e.text.slice(0, idx).trim(), start: e.start, end: mt });
-        srtFinal.push({ text: e.text.slice(idx).trim(), start: mt, end: e.end });
-      }
-      ttsSrtData = srtFinal.map((s, i) => `${i+1}\n${fmtSrtTime(s.start)} --> ${fmtSrtTime(s.end)}\n${s.text}`).join('\n\n');
-
-      showTTSResult(combinedBlob, `음성 생성 완료! (${sentences.length}문장, 감정 혼합)`);
+      const arrBuf = await res.arrayBuffer();
+      const decoded = await audioCtx.decodeAudioData(arrBuf);
+      audioBuffers.push(decoded);
     }
-  }
 
-  function getAudioDuration(url) {
-    return new Promise((resolve) => {
-      const a = new Audio();
-      a.addEventListener('loadedmetadata', () => resolve(a.duration));
-      a.addEventListener('error', () => resolve(0));
-      a.src = url;
-    });
-  }
+    // AudioBuffer 합치기
+    const sr = audioBuffers[0].sampleRate;
+    const numCh = audioBuffers[0].numberOfChannels;
+    const GAP_SAMPLES = Math.round(0.05 * sr); // 50ms 간격
+    const totalLen = audioBuffers.reduce((sum, b) => sum + b.length, 0) + GAP_SAMPLES * (audioBuffers.length - 1);
 
-  // 텍스트 기반 SRT (타임스탬프 없을 때 - 문장별 균등 분배)
-  function buildSRTFromText(text, duration) {
-    if (!duration) return null;
-    // 문장 분리
-    const raw = text.split(/(?<=[.!?。！？\n])\s*/g).map(s => s.trim()).filter(s => s.length > 0);
-    // 문장이 없으면 줄바꿈으로 분리
-    const sentences = raw.length > 1 ? raw : text.split('\n').map(s => s.trim()).filter(s => s.length > 0);
-    if (!sentences.length) return null;
+    const offCtx = new OfflineAudioContext(numCh, totalLen, sr);
+    let offset = 0;
+    const durations = [];
+    for (let i = 0; i < audioBuffers.length; i++) {
+      const src = offCtx.createBufferSource();
+      src.buffer = audioBuffers[i];
+      src.connect(offCtx.destination);
+      src.start(offset / sr);
+      durations.push(audioBuffers[i].duration);
+      offset += audioBuffers[i].length;
+      if (i < audioBuffers.length - 1) offset += GAP_SAMPLES;
+    }
 
-    // 글자 수 비율로 시간 배분 (문장 사이 0.1초 간격)
-    const GAP = 0.1;
-    const totalGap = GAP * (sentences.length - 1);
-    const speechTime = Math.max(0, duration - totalGap);
-    const totalChars = sentences.reduce((sum, s) => sum + s.length, 0);
+    const rendered = await offCtx.startRendering();
+    const combinedBlob = audioBufferToWav(rendered);
+    audioCtx.close();
+
+    // SRT 생성 (실측 기반)
+    const GAP_SEC = GAP_SAMPLES / sr;
     let time = 0;
-    const entries = sentences.map((s, i) => {
+    const srtEntries = sentences.map((s, i) => {
       const start = time;
-      const dur = (s.length / totalChars) * speechTime;
-      time += dur;
-      const end = time;
-      if (i < sentences.length - 1) time += GAP;
+      const end = time + durations[i];
+      time = end + GAP_SEC;
       return { text: s, start, end };
     });
-
-    // 40자 초과 분할
-    const final = [];
-    for (const e of entries) {
-      if (e.text.length <= 40) { final.push(e); continue; }
+    const srtFinal = [];
+    for (const e of srtEntries) {
+      if (e.text.length <= 40) { srtFinal.push(e); continue; }
       const mid = Math.ceil(e.text.length / 2);
       const sp = e.text.indexOf(' ', mid - 10);
       const idx = sp > 0 ? sp : mid;
-      const midTime = e.start + (e.end - e.start) * (idx / e.text.length);
-      final.push({ text: e.text.slice(0, idx).trim(), start: e.start, end: midTime });
-      final.push({ text: e.text.slice(idx).trim(), start: midTime, end: e.end });
+      const mt = e.start + (e.end - e.start) * (idx / e.text.length);
+      srtFinal.push({ text: e.text.slice(0, idx).trim(), start: e.start, end: mt });
+      srtFinal.push({ text: e.text.slice(idx).trim(), start: mt, end: e.end });
     }
+    ttsSrtData = srtFinal.map((s, i) => `${i+1}\n${fmtSrtTime(s.start)} --> ${fmtSrtTime(s.end)}\n${s.text}`).join('\n\n');
 
-    return final.map((s, i) => `${i + 1}\n${fmtSrtTime(s.start)} --> ${fmtSrtTime(s.end)}\n${s.text}`).join('\n\n');
+    showTTSResult(combinedBlob, `음성 생성 완료! (${sentences.length}문장)`);
   }
 
   function showTTSResult(blob, msg) {
