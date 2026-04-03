@@ -77,7 +77,7 @@
   <header>
     <div class="logo">THUMB AI</div>
     <div class="logo-sub">Settings</div>
-    <a href="/" style="margin-left:auto;padding:8px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--muted2);font-size:13px;font-weight:500;text-decoration:none;transition:all 0.2s;">메인</a>
+    <a href="/" onclick="if(window.parent!==window){window.parent.closeSettings();return false;}" style="margin-left:auto;padding:8px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--muted2);font-size:13px;font-weight:500;text-decoration:none;transition:all 0.2s;">닫기</a>
   </header>
 
   <!-- API 키 -->
@@ -392,7 +392,7 @@
           method: 'POST',
           headers: { 'Content-Type':'application/json', 'x-api-key':apiKey, 'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' },
           body: JSON.stringify({
-            model: 'claude-opus-4-5', max_tokens: 2048,
+            model: 'claude-sonnet-4-6', max_tokens: 2048,
             messages: [{ role:'user', content:`다음은 유튜브 쇼츠 대본 ${batches[i].length}개입니다. 공통 작성 스타일을 분석해주세요.\n\n분석 항목:\n1. 말투/어조\n2. 문장 구조\n3. 대본 구조 (도입-본론-마무리)\n4. 도입부 후킹 방식\n5. 마무리 특징\n6. 자주 쓰는 표현\n7. 평균 길이\n8. 주제 다루는 방식\n\n간결하게 핵심만.\n\n${batchText}` }]
           })
         });
@@ -409,7 +409,7 @@
           method: 'POST',
           headers: { 'Content-Type':'application/json', 'x-api-key':apiKey, 'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' },
           body: JSON.stringify({
-            model: 'claude-opus-4-5', max_tokens: 2048,
+            model: 'claude-sonnet-4-6', max_tokens: 2048,
             messages: [{ role:'user', content:`여러 배치 분석 결과를 하나의 스타일 가이드로 통합. 간결하게.\n\n${partialGuides.map((g,i)=>`[배치 ${i+1}]\n${g}`).join('\n\n---\n\n')}` }]
           })
         });
