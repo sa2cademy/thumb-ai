@@ -6,6 +6,7 @@
 <title>THUMB AI — 썸네일 픽커</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Pretendard:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="/photo-finder.js"></script>
 <style>
   :root {
     --bg: #0a0a0a;
@@ -1919,8 +1920,7 @@ ${transcript}
     return +h * 3600 + +m * 60 + +s + +ms / 1000;
   }
 
-  // ── 장면별 사진 찾기 ──
-  const PHOTO_BANNED = ['차트','그래프','인포그래픽','통계','보고서','기사','뉴스','썸네일','캡처','가사','자막','문서','책'];
+  // ── 장면별 사진 찾기 (photo-finder.js 엔진 사용) ──
   let photoResults = [];
 
   function openPhotoModal() {
@@ -1944,23 +1944,19 @@ ${transcript}
 
     const btn = document.getElementById('photo-search-btn');
     btn.disabled = true;
-    btn.textContent = '분석 중...';
+    btn.textContent = '검색 중...';
     const statusEl = document.getElementById('photo-status');
     statusEl.style.display = 'block';
     document.getElementById('photo-cards').innerHTML = '';
     photoResults = [];
 
     try {
-      statusEl.textContent = 'AI가 장면을 분석하고 있어요...';
-      const queries = await generatePhotoQueries(sentences, keyword, apiKey);
+      const results = await PF.findPhotos(sentences, keyword, apiKey, (msg) => {
+        statusEl.textContent = msg;
+      });
 
-      for (let i = 0; i < sentences.length; i++) {
-        statusEl.textContent = `사진 검색 중... (${i + 1}/${sentences.length})`;
-        const q = queries[i] || sentences[i];
-        const photos = await searchBingImages(q);
-        photoResults.push({ sentence: sentences[i], query: q, photos });
-        renderPhotoCard(i, sentences[i], q, photos);
-      }
+      photoResults = results;
+      results.forEach((r, i) => renderPhotoCard(i, r));
 
       statusEl.textContent = `${sentences.length}개 장면 사진 찾기 완료!`;
       document.getElementById('photo-done').style.display = 'block';
@@ -1969,61 +1965,29 @@ ${transcript}
       toast('사진 찾기 실패');
     }
     btn.disabled = false;
-    btn.textContent = '사진 찾기';
+    btn.textContent = '시작';
   }
 
-  async function generatePhotoQueries(sentences, keyword, apiKey) {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6', max_tokens: 1024,
-        messages: [{ role: 'user', content: `대본의 각 줄에 맞는 이미지 검색 쿼리를 만들어줘.
-대표 키워드: ${keyword || '(없음)'}
-
-대본:
-${sentences.map((s, i) => `${i + 1}. ${s}`).join('\n')}
-
-규칙:
-- 각 줄마다 Bing 이미지 검색에 최적화된 검색어 1개
-- 실제 사진이 나올 구체적 검색어 (인물명, 장소명 등)
-- 설명 문장은 대표 키워드 관련 사진으로
-- 차트/그래프/기사 키워드 금지
-
-JSON만 반환: {"queries":["검색어1","검색어2",...]}` }]
-      })
-    });
-    const data = await res.json();
-    if (data.error) throw new Error(data.error.message);
-    const text = data.content[0].text;
-    const json = JSON.parse(text.match(/\{[\s\S]*\}/)?.[0] || '{}');
-    return json.queries || sentences;
-  }
-
-  async function searchBingImages(query) {
-    const res = await fetch(`/api/image-search?q=${encodeURIComponent(query)}`);
-    if (!res.ok) return [];
-    const data = await res.json();
-    return (data.items || []).filter(item => {
-      const hay = `${item.title} ${item.link}`.toLowerCase();
-      return !PHOTO_BANNED.some(b => hay.includes(b));
-    }).slice(0, 6);
-  }
-
-  function renderPhotoCard(index, sentence, query, photos) {
+  function renderPhotoCard(index, result) {
+    const { sentence, plan, photos } = result;
     const card = document.createElement('div');
     card.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;';
+
+    const targetInfo = plan ? `<span style="font-size:10px;color:var(--accent);margin-left:8px;">${plan.target_entity} · ${plan.reasoning_short}</span>` : '';
+
     card.innerHTML = `
-      <div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:8px;">
+      <div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:6px;">
         <span style="background:var(--accent);color:#fff;font-size:11px;font-weight:700;width:22px;height:22px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${index + 1}</span>
-        <div style="font-size:12px;color:var(--muted2);line-height:1.5;">${sentence}</div>
+        <div style="flex:1;">
+          <div style="font-size:12px;color:var(--muted2);line-height:1.5;">${sentence}</div>
+          ${targetInfo}
+        </div>
       </div>
-      <div style="font-size:10px;color:var(--muted);margin-bottom:6px;">검색: ${query}</div>
       <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;" id="photo-row-${index}">
         ${photos.length ? photos.map((p, pi) => `
-          <img src="${p.link}" style="height:80px;border-radius:6px;cursor:pointer;border:2px solid transparent;flex-shrink:0;object-fit:cover;"
+          <img src="${p.link}" style="height:90px;border-radius:6px;cursor:pointer;border:2px solid transparent;flex-shrink:0;object-fit:cover;"
             onclick="selectPhoto(this,${index},${pi})" onerror="this.style.display='none'" title="${(p.title||'').replace(/"/g,'')}">`).join('')
-          : '<div style="font-size:11px;color:var(--muted);padding:20px;">사진을 찾지 못했습니다</div>'}
+          : '<div style="font-size:11px;color:var(--muted);padding:16px;">사진을 찾지 못했습니다</div>'}
       </div>`;
     document.getElementById('photo-cards').appendChild(card);
   }
