@@ -9,23 +9,23 @@
 <script src="/photo-finder.js"></script>
 <style>
   :root {
-    --bg: #09090b;
-    --surface: rgba(255,255,255,0.06);
-    --surface2: rgba(255,255,255,0.09);
-    --surface3: rgba(255,255,255,0.14);
-    --border: rgba(255,255,255,0.1);
-    --border2: rgba(255,255,255,0.18);
+    --bg: #0a0a0a;
+    --surface: rgba(255,255,255,0.04);
+    --surface2: rgba(255,255,255,0.06);
+    --surface3: rgba(255,255,255,0.1);
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.14);
     --accent: #3182f6;
     --accent2: #5b9cf6;
-    --accent-bg: rgba(49,130,246,0.1);
-    --accent-glow: rgba(49,130,246,0.2);
-    --text: #f4f4f5;
-    --text2: #a1a1aa;
-    --muted: #52525b;
-    --muted2: #71717a;
+    --accent-bg: rgba(49,130,246,0.08);
+    --accent-glow: rgba(49,130,246,0.15);
+    --text: #ececec;
+    --text2: #b0b0b0;
+    --muted: #555;
+    --muted2: #888;
     --radius: 16px;
     --radius-sm: 10px;
-    --shadow: 0 4px 24px rgba(0,0,0,0.35);
+    --shadow: 0 2px 16px rgba(0,0,0,0.2);
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
@@ -34,39 +34,11 @@
     font-family: 'Pretendard', sans-serif;
     min-height: 100vh;
   }
-  .container { max-width: 860px; margin: 0 auto; padding: 32px 24px 80px; }
-
-  /* 마퀴 배너 */
-  .marquee-wrap { overflow:hidden; width:100%; background:var(--bg); padding:6px 0; border-bottom:1px solid var(--border); }
-  .marquee-track { display:flex; align-items:center; gap:60px; width:max-content; animation:marquee 30s linear infinite; }
-  .marquee-track img { height:40px; opacity:0.7; flex-shrink:0; }
-  @keyframes marquee { 0%{transform:translateX(0)} 100%{transform:translateX(-50%)} }
-
-  /* 스텝 위저드 */
-  .step-nav { display:flex; align-items:center; gap:0; margin-bottom:32px; padding:0 4px; }
-  .step-nav-item { flex:1; display:flex; align-items:center; gap:8px; cursor:pointer; padding:12px 0; position:relative; }
-  .step-nav-item::after { content:''; position:absolute; bottom:0; left:0; right:0; height:2px; background:var(--border); transition:background 0.3s; }
-  .step-nav-item.active::after { background:var(--accent); }
-  .step-nav-item.done::after { background:var(--accent); opacity:0.5; }
-  .step-num { width:24px; height:24px; border-radius:50%; background:var(--surface2); border:1.5px solid var(--border); color:var(--muted); font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; transition:all 0.3s; flex-shrink:0; }
-  .step-nav-item.active .step-num { background:var(--accent); border-color:var(--accent); color:#fff; }
-  .step-nav-item.done .step-num { background:transparent; border-color:var(--accent); color:var(--accent); }
-  .step-label { font-size:13px; color:var(--muted); font-weight:500; transition:color 0.3s; }
-  .step-nav-item.active .step-label { color:var(--text); font-weight:600; }
-  .step-nav-item.done .step-label { color:var(--muted2); }
-  .step-content { display:none; animation:fadeIn 0.3s ease; }
-  .step-content.active { display:block; }
-  @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
-  .step-actions { display:flex; gap:10px; margin-top:24px; justify-content:flex-end; }
-  .btn-next { padding:12px 32px; background:var(--accent); color:#fff; border:none; border-radius:var(--radius-sm); font-family:'Pretendard',sans-serif; font-size:14px; font-weight:600; cursor:pointer; transition:all 0.2s; }
-  .btn-next:hover { opacity:0.9; }
-  .btn-next:disabled { opacity:0.3; cursor:not-allowed; }
-  .btn-prev { padding:12px 24px; background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--muted2); font-family:'Pretendard',sans-serif; font-size:14px; font-weight:500; cursor:pointer; transition:all 0.2s; }
-  .btn-prev:hover { border-color:var(--border2); color:var(--text); }
+  .container { max-width: 640px; margin: 0 auto; padding: 48px 20px 80px; }
 
   /* 헤더 */
-  header { margin-bottom: 40px; display: flex; align-items: center; gap: 14px; padding:20px 24px; background:linear-gradient(135deg, rgba(49,130,246,0.08) 0%, transparent 60%); border:1px solid var(--border); border-radius:var(--radius); }
-  .logo { font-family: 'Bebas Neue', sans-serif; font-size: 36px; letter-spacing: 2px; line-height: 1; color: var(--text); }
+  header { margin-bottom: 40px; display: flex; align-items: center; gap: 14px; }
+  .logo { font-family: 'Bebas Neue', sans-serif; font-size: 32px; letter-spacing: 1.5px; line-height: 1; color: var(--text); }
   .logo span { color: var(--accent); }
   .logo-sub { font-size: 12px; color: var(--muted2); letter-spacing: 0.04em; font-weight: 400; }
 
@@ -88,12 +60,12 @@
   .api-toggle:hover { color: var(--text); }
 
   /* 카드 */
-  .card { background: var(--surface); backdrop-filter: blur(20px); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 24px; transition: all 0.3s; box-shadow: var(--shadow); }
-  .card:hover { border-color: var(--border2); box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
-  .card-header { padding: 20px 22px; display: flex; align-items: center; gap: 12px; border-bottom:1px solid var(--border); }
-  .step-badge { width: 28px; height: 28px; border-radius: 8px; background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 2px 12px var(--accent-glow); }
+  .card { background: var(--surface); backdrop-filter: blur(20px); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 16px; transition: border-color 0.3s; }
+  .card:hover { border-color: var(--border2); }
+  .card-header { padding: 18px 20px; display: flex; align-items: center; gap: 12px; }
+  .step-badge { width: 26px; height: 26px; border-radius: 8px; background: var(--accent); color: #fff; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 2px 8px var(--accent-glow); }
   .card-title { font-size: 15px; font-weight: 600; }
-  .card-body { padding: 0 22px 22px; }
+  .card-body { padding: 0 20px 20px; }
 
   /* 입력/버튼 */
   .row { display: flex; gap: 10px; }
@@ -106,8 +78,8 @@
   .url-input::placeholder { color: var(--muted); }
 
   .btn { padding: 14px 24px; border-radius: var(--radius-sm); border: none; cursor: pointer; font-family: 'Pretendard', sans-serif; font-size: 14px; font-weight: 600; transition: all 0.2s; white-space: nowrap; }
-  .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; box-shadow: 0 2px 16px var(--accent-glow); }
-  .btn-primary:hover { background: linear-gradient(135deg, var(--accent2), var(--accent)); box-shadow: 0 4px 24px var(--accent-glow); }
+  .btn-primary { background: var(--accent); color: #fff; box-shadow: 0 2px 10px var(--accent-glow); }
+  .btn-primary:hover { background: var(--accent2); box-shadow: 0 4px 16px var(--accent-glow); }
   .btn-primary:active { transform: scale(0.97); }
   .btn-primary:disabled { opacity: 0.35; cursor: not-allowed; transform: none; box-shadow: none; }
   .btn-sm { padding: 10px 16px; font-size: 13px; border-radius: 8px; }
@@ -125,16 +97,16 @@
   .status-text { font-size: 13px; color: var(--muted2); }
 
   /* 글로벌 로딩 */
-  .loading-bar { display:none; background:var(--accent-bg); border:1px solid rgba(49,130,246,0.15); border-radius:var(--radius-sm); padding:14px 18px; margin:12px 0; }
+  .loading-bar { display:none; background:var(--surface); backdrop-filter:blur(20px); border:1px solid var(--border); border-radius:var(--radius); padding:20px; margin-bottom:16px; }
   .loading-bar.show { display:block; animation:fadeIn 0.3s ease; }
   @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
   @keyframes slideUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
-  .loading-inner { display:flex; align-items:center; gap:12px; }
-  .spinner { width:18px; height:18px; border:2px solid rgba(49,130,246,0.2); border-top-color:var(--accent); border-radius:50%; animation:spin 0.7s linear infinite; flex-shrink:0; }
+  .loading-inner { display:flex; align-items:center; gap:14px; }
+  .spinner { width:24px; height:24px; border:2.5px solid var(--border2); border-top-color:var(--accent); border-radius:50%; animation:spin 0.7s linear infinite; flex-shrink:0; }
   @keyframes spin { to { transform:rotate(360deg); } }
-  .loading-step { font-size:13px; color:var(--accent); font-weight:600; }
-  .loading-sub { font-size:12px; color:var(--muted2); margin-top:2px; }
-  .loading-progress { display:none; }
+  .loading-step { font-size:15px; color:var(--text); font-weight:600; }
+  .loading-sub { font-size:13px; color:var(--muted2); margin-top:4px; }
+  .loading-progress { margin-top:16px; background:var(--border); border-radius:100px; height:4px; overflow:hidden; }
   .loading-progress-fill { height:100%; background:linear-gradient(90deg, var(--accent), var(--accent2)); border-radius:100px; transition:width 0.5s ease; width:0%; }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
   .loading-pulse { animation:pulse 1.5s ease-in-out infinite; }
@@ -182,7 +154,7 @@
   .section-divider { height:1px; background:var(--border); margin:24px 0; }
 
   /* 자막+썸네일 레이아웃 */
-  .caption-box { background: var(--surface); backdrop-filter:blur(20px); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-top: 24px; animation:slideUp 0.4s ease; box-shadow: var(--shadow); }
+  .caption-box { background: var(--surface); backdrop-filter:blur(20px); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-top: 16px; animation:slideUp 0.4s ease; }
   .caption-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 8px; }
   .caption-label { font-size: 14px; font-weight: 600; display:flex; align-items:center; gap:8px; }
   .caption-label::before { content:''; width:3px; height:16px; background:var(--accent); border-radius:2px; }
@@ -216,7 +188,7 @@
   .main-tabs { display:flex; gap:4px; margin-bottom:24px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:4px; }
   .main-tab { flex:1; padding:12px; text-align:center; background:transparent; border:none; border-radius:12px; color:var(--muted2); font-size:14px; font-weight:600; cursor:pointer; font-family:'Pretendard',sans-serif; transition:all 0.25s; }
   .main-tab:hover { color:var(--text2); }
-  .main-tab.active { background:linear-gradient(135deg, var(--accent), var(--accent2)); color:#fff; box-shadow:0 4px 16px var(--accent-glow); }
+  .main-tab.active { background:var(--accent); color:#fff; box-shadow:0 2px 8px var(--accent-glow); }
   .tab-content { display:none; }
   .tab-content.active { display:block; animation:fadeIn 0.3s ease; }
 
@@ -230,17 +202,10 @@
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
   .note { font-size: 12px; color: var(--muted); margin-top: 10px; line-height: 1.6; }
-
 </style>
 </head>
 <body>
 <canvas id="canvas"></canvas>
-
-<a href="https://cafe.naver.com/shorts00" target="_blank" class="marquee-wrap" style="text-decoration:none;display:block;cursor:pointer;">
-  <div class="marquee-track">
-    <img src="/marquee-logo.png" alt=""><img src="/marquee-logo.png" alt=""><img src="/marquee-logo.png" alt=""><img src="/marquee-logo.png" alt=""><img src="/marquee-logo.png" alt=""><img src="/marquee-logo.png" alt=""><img src="/marquee-logo.png" alt=""><img src="/marquee-logo.png" alt="">
-  </div>
-</a>
 
 <div class="container">
   <header>
@@ -251,18 +216,18 @@
     <button onclick="openSettings()" style="margin-left:auto;padding:8px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--muted2);font-size:13px;font-weight:500;cursor:pointer;transition:all 0.2s;">설정</button>
   </header>
 
-  <!-- 스텝 네비게이션 -->
-  <nav class="step-nav" id="step-nav">
-    <div class="step-nav-item active" onclick="goToStep(0)"><div class="step-num">1</div><span class="step-label">대본 & 음성</span></div>
-    <div class="step-nav-item" onclick="goToStep(1)"><div class="step-num">2</div><span class="step-label">사진</span></div>
-    <div class="step-nav-item" onclick="goToStep(2)"><div class="step-num">3</div><span class="step-label">썸네일</span></div>
-  </nav>
 
-  <!-- Step 0: 소스 입력 -->
-  <div class="step-content active" id="step-0">
+  <!-- 탭 -->
+  <div class="main-tabs">
+    <button class="main-tab active" onclick="switchTab('youtube')">YouTube</button>
+    <button class="main-tab" onclick="switchTab('myvideos')">내 영상</button>
+  </div>
 
+  <!-- YouTube 탭 -->
+  <div class="tab-content active" id="tab-youtube">
     <div class="card">
       <div class="card-header">
+        <div class="step-badge">1</div>
         <div class="card-title">URL 입력</div>
       </div>
       <div class="card-body">
@@ -270,7 +235,7 @@
           <input type="text" id="yt-url" class="url-input" placeholder="YouTube URL 또는 기사 URL 붙여넣기">
           <button class="btn btn-primary" onclick="loadUrl()" id="load-btn">불러오기</button>
         </div>
-        <p class="note">YouTube → 영상 스크립트 추출 · 기사 URL → 본문 추출 → 대본 생성</p>
+        <p class="note">YouTube → 영상 음성 인식 · 기사 URL → 본문 추출 → 대본 생성</p>
 
         <!-- 영상 파일 드롭존 (서버 다운로드 실패 시 표시) -->
         <div id="video-drop-zone" style="display:none;margin-top:12px;border:2px dashed var(--accent);border-radius:var(--radius);padding:32px 16px;text-align:center;cursor:pointer;transition:all 0.2s;background:var(--accent-bg);"
@@ -280,7 +245,7 @@
           onclick="document.getElementById('video-file-input').click()">
           <div style="font-size:28px;margin-bottom:8px;">📁</div>
           <div style="font-size:14px;color:var(--text);font-weight:600;margin-bottom:4px;">영상 파일을 직접 올려주세요</div>
-          <div style="font-size:12px;color:var(--muted);line-height:1.6;"><a href="https://download.saacademy.co.kr/" target="_blank" onclick="event.stopPropagation()" style="color:var(--accent);text-decoration:none;font-weight:600;">여기서 영상 다운로드</a> 후 드래그하거나 클릭해서 선택</div>
+          <div style="font-size:12px;color:var(--muted);line-height:1.6;">YouTube에서 영상을 다운로드한 후<br>여기에 드래그하거나 클릭해서 선택하세요</div>
           <input type="file" id="video-file-input" accept="video/*" style="display:none;" onchange="handleVideoFile(event)">
         </div>
 
@@ -288,7 +253,7 @@
           <video id="preview-video" controls playsinline muted></video>
           <div class="video-info">
             <span class="video-meta" id="video-meta"></span>
-            <button class="btn btn-primary btn-sm" onclick="transcribeVideo()" id="stt-btn">🎙 스크립트 추출</button>
+            <button class="btn btn-primary btn-sm" onclick="transcribeVideo()" id="stt-btn">🎙 음성 인식</button>
           </div>
         </div>
 
@@ -299,16 +264,61 @@
         </div>
       </div>
     </div>
+  </div>
+
+  <!-- 내 영상 탭 -->
+  <div class="tab-content" id="tab-myvideos">
+    <div class="card">
+      <div class="card-header">
+        <div class="step-badge">1</div>
+        <div class="card-title">내 영상 업로드</div>
+      </div>
+      <div class="card-body">
+        <div class="file-drop" id="video-drop" onclick="document.getElementById('video-input').click()">
+          <div style="font-size:32px;margin-bottom:8px;">🎬</div>
+          영상 파일을 드래그하거나 클릭해서 업로드<br>
+          <span style="font-size:11px;color:var(--muted);">mp4, mov, webm 지원</span>
+          <input type="file" id="video-input" accept="video/*" style="display:none;">
+        </div>
+
+        <div id="my-video-wrap" style="display:none;margin-top:16px;">
+          <video id="my-preview-video" controls playsinline muted style="width:100%;max-height:320px;border-radius:var(--radius-sm);background:#000;object-fit:contain;"></video>
+          <div class="video-info" style="margin-top:12px;">
+            <span class="video-meta" id="my-video-meta"></span>
+            <button class="btn btn-primary btn-sm" onclick="analyzeMyVideo()" id="my-analyze-btn">🔍 AI 썸네일 분석</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 진행 상태 -->
+    <div id="my-status-box" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:20px;">
+      <div class="status-label">분석 중</div>
+      <div class="progress-wrap"><div class="progress-fill" id="my-progress-fill"></div></div>
+      <div class="status-text" id="my-status-text">준비 중...</div>
+    </div>
+
+    <!-- 결과 -->
+    <div id="my-result-section" style="display:none;">
+      <div class="result-top">
+        <div class="result-title">AI 추천 썸네일</div>
+        <button class="btn btn-primary btn-sm" onclick="resetMyResults()">↺ 다시</button>
+      </div>
+      <div class="result-grid" id="my-result-grid"></div>
+    </div>
+  </div>
 
   <!-- 글로벌 로딩 -->
   <div class="loading-bar" id="loading-bar">
     <div class="loading-inner">
       <div class="spinner"></div>
-      <div>
-        <div class="loading-step" id="loading-step"></div>
-        <div class="loading-sub" id="loading-sub"></div>
+      <div style="flex:1;">
+        <div class="loading-step" id="loading-step">처리 중...</div>
+        <div class="loading-sub loading-pulse" id="loading-sub"></div>
       </div>
+      <button id="loading-cancel-btn" onclick="cancelLoading()" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--muted2);font-size:12px;padding:6px 14px;cursor:pointer;font-family:'Pretendard',sans-serif;font-weight:500;transition:all 0.2s;white-space:nowrap;">취소</button>
     </div>
+    <div class="loading-progress"><div class="loading-progress-fill" id="loading-fill"></div></div>
   </div>
 
   <!-- 자막 스크립트 -->
@@ -346,14 +356,10 @@
       <div style="display:flex;gap:8px;">
         <button class="caption-copy" onclick="openScriptModal()">보기/수정</button>
         <button class="caption-copy" onclick="copyScript()">복사</button>
+        <button class="caption-copy" onclick="openPhotoModal()" id="photo-match-btn" style="display:none;">사진 매칭</button>
       </div>
     </div>
     <div id="script-content" class="caption-text"></div>
-  </div>
-  <div id="tts-section-wrap" class="caption-box" style="display:none;">
-    <div class="caption-header">
-      <span class="caption-label">음성 생성</span>
-    </div>
 
     <!-- TTS -->
     <div id="tts-controls" style="display:none;margin-top:14px;">
@@ -372,7 +378,7 @@
       </div>
       <div style="display:flex;gap:10px;align-items:center;margin-top:8px;">
         <span style="font-size:11px;color:var(--muted);white-space:nowrap;">배속</span>
-        <input type="range" id="tts-speed" min="0.7" max="1.2" step="0.05" value="1.0" style="flex:1;accent-color:var(--accent);" oninput="document.getElementById('tts-speed-val').textContent=this.value+'x'">
+        <input type="range" id="tts-speed" min="0.5" max="2.0" step="0.1" value="1.0" style="flex:1;accent-color:var(--accent);" oninput="document.getElementById('tts-speed-val').textContent=this.value+'x'">
         <span id="tts-speed-val" style="font-size:12px;color:var(--text2);min-width:32px;">1.0x</span>
       </div>
     </div>
@@ -403,94 +409,25 @@
       <button class="caption-copy" onclick="downloadSRT()" id="srt-download-btn">자막 다운로드 (SRT)</button>
     </div>
   </div>
+</div>
 
-  <div class="step-actions" id="step0-actions" style="display:none;">
-    <button class="btn-next" onclick="goToStep(1)">다음: 사진 →</button>
-  </div>
-  </div><!-- /step-0 -->
-
-  <!-- Step 3: 사진 매칭 (모달 대신 전체 화면) -->
-  <div class="step-content" id="step-1">
-    <div class="caption-box">
-      <div class="caption-header">
-        <span class="caption-label">사진 매칭</span>
-        <div style="display:flex;gap:8px;align-items:center;">
-          <input type="text" id="photo-keyword" placeholder="대표 키워드 (예: BTS, 이재용)" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text2);font-size:12px;padding:7px 10px;font-family:'Pretendard',sans-serif;outline:none;width:160px;">
-          <button class="caption-copy" onclick="startPhotoSearch()" id="photo-search-btn">사진 찾기</button>
-        </div>
-      </div>
-      <div style="font-size:13px;color:var(--muted2);margin-bottom:12px;">대본에 어울리는 사진을 찾아볼까요? 대표 키워드를 입력하고 사진 찾기를 눌러주세요.</div>
-      <div id="photo-status" style="display:none;font-size:12px;color:var(--muted);padding:8px 0;"></div>
-      <div id="photo-cards" style="display:flex;flex-direction:column;gap:12px;"></div>
-      <div id="photo-done" style="display:none;margin-top:12px;">
-        <button class="caption-copy" onclick="downloadAllPhotos()" style="width:100%;">선택한 사진 다운로드</button>
-      </div>
+<!-- 사진 매칭 모달 -->
+<div class="modal-overlay" id="photo-modal" onclick="if(event.target===this)closePhotoModal()" style="display:none;">
+  <div style="position:relative;width:92%;max-width:600px;max-height:85vh;display:flex;flex-direction:column;background:var(--bg);border-radius:16px;border:1px solid var(--border);overflow:hidden;">
+    <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0;">
+      <span style="font-size:15px;font-weight:600;">장면별 사진 매칭</span>
+      <div style="flex:1;"></div>
+      <input type="text" id="photo-keyword" placeholder="대표 키워드" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text2);font-size:12px;padding:7px 10px;font-family:'Pretendard',sans-serif;outline:none;width:140px;">
+      <button class="caption-copy" onclick="startPhotoSearch()" id="photo-search-btn">시작</button>
+      <button onclick="closePhotoModal()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;">&times;</button>
     </div>
-    <div class="step-actions">
-      <button class="btn-prev" onclick="goToStep(0)">← 대본</button>
-      <button class="btn-next" onclick="goToStep(2)">다음: 썸네일 →</button>
+    <div id="photo-status" style="display:none;font-size:12px;color:var(--muted);padding:8px 20px;background:var(--surface);flex-shrink:0;"></div>
+    <div id="photo-cards" style="flex:1;overflow-y:auto;padding:12px 20px;display:flex;flex-direction:column;gap:10px;"></div>
+    <div id="photo-done" style="display:none;padding:12px 20px;border-top:1px solid var(--border);flex-shrink:0;">
+      <button class="caption-copy" onclick="downloadAllPhotos()" style="width:100%;">선택한 사진 다운로드</button>
     </div>
   </div>
-
-  <!-- Step 3: 썸네일 -->
-  <div class="step-content" id="step-2">
-    <div class="caption-box">
-      <div class="caption-header">
-        <span class="caption-label">썸네일 분석</span>
-      </div>
-      <div style="font-size:13px;color:var(--muted2);margin-bottom:16px;">완성된 영상을 올리면 AI가 썸네일을 골라드려요</div>
-      <div class="file-drop" id="video-drop" onclick="document.getElementById('video-input').click()" style="margin-bottom:0;">
-          <div style="font-size:32px;margin-bottom:8px;">🎬</div>
-          영상 파일을 드래그하거나 클릭해서 업로드<br>
-          <span style="font-size:11px;color:var(--muted);">mp4, mov, webm 지원</span>
-          <input type="file" id="video-input" accept="video/*" style="display:none;">
-        </div>
-
-        <div id="my-video-wrap" style="display:none;margin-top:16px;">
-          <video id="my-preview-video" controls playsinline muted style="width:100%;max-height:320px;border-radius:var(--radius-sm);background:#000;object-fit:contain;"></video>
-          <div class="video-info" style="margin-top:12px;">
-            <span class="video-meta" id="my-video-meta"></span>
-            <button class="btn btn-primary btn-sm" onclick="analyzeMyVideo()" id="my-analyze-btn">🔍 AI 썸네일 분석</button>
-          </div>
-        </div>
-    </div><!-- /caption-box -->
-
-    <!-- 진행 상태 -->
-    <div id="my-status-box" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:20px;">
-      <div class="status-label">분석 중</div>
-      <div class="progress-wrap"><div class="progress-fill" id="my-progress-fill"></div></div>
-      <div class="status-text" id="my-status-text">준비 중...</div>
-    </div>
-
-    <!-- 결과 -->
-    <div id="my-result-section" style="display:none;">
-      <div class="result-top">
-        <div class="result-title">AI 추천 썸네일</div>
-        <button class="btn btn-primary btn-sm" onclick="resetMyResults()">↺ 다시</button>
-      </div>
-      <div class="result-grid" id="my-result-grid"></div>
-    </div>
-
-    <!-- 다운로드 모아보기 -->
-    <div class="caption-box" style="margin-top:16px;">
-      <div class="caption-header">
-        <span class="caption-label">파일 다운로드</span>
-      </div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;">
-        <button class="btn btn-primary btn-sm" onclick="downloadTTS()">음성</button>
-        <button class="btn btn-primary btn-sm" onclick="downloadSRT()">자막 (SRT)</button>
-        <button class="btn btn-primary btn-sm" onclick="downloadAllPhotos()">사진</button>
-      </div>
-    </div>
-
-    <div class="step-actions">
-      <button class="btn-prev" onclick="goToStep(1)">← 사진</button>
-      <button class="btn-prev" onclick="goToStep(0)">처음부터 다시</button>
-    </div>
-  </div>
-
-</div><!-- /container -->
-
+</div>
 
 <!-- 설정 모달 (iframe) -->
 <div class="modal-overlay" id="settings-modal" onclick="if(event.target===this)closeSettings()" style="display:none;z-index:1000;">
@@ -515,54 +452,6 @@
 <div class="toast" id="toast"></div>
 
 <script>
-  // ── 스텝 위저드 ──
-  let currentStep = 0;
-  let maxStep = 0;
-
-  function unlockStep(n) {
-    if (n > maxStep) maxStep = n;
-    document.querySelectorAll('.step-nav-item').forEach((el, i) => {
-      el.style.opacity = i <= maxStep ? '1' : '0.35';
-      el.style.cursor = i <= maxStep ? 'pointer' : 'default';
-      el.style.pointerEvents = i <= maxStep ? 'auto' : 'none';
-    });
-    const nextBtn = document.querySelector(`#step-${currentStep} .btn-next`);
-    if (nextBtn && currentStep < maxStep) nextBtn.disabled = false;
-  }
-
-  function goToStep(n) {
-    if (n > maxStep) return;
-    currentStep = n;
-    document.querySelectorAll('.step-content').forEach((el, i) => {
-      el.classList.toggle('active', i === n);
-    });
-    document.querySelectorAll('.step-nav-item').forEach((el, i) => {
-      el.classList.remove('active', 'done');
-      if (i === n) el.classList.add('active');
-      else if (i < n) el.classList.add('done');
-      el.style.opacity = i <= maxStep ? '1' : '0.35';
-      el.style.pointerEvents = i <= maxStep ? 'auto' : 'none';
-      el.style.opacity = i <= maxStep ? '1' : '0.35';
-      el.style.cursor = i <= maxStep ? 'pointer' : 'default';
-    });
-    if (n === 0 && document.getElementById('script-section').style.display !== 'none') showTTSControls();
-    // 다음 버튼 활성/비활성
-    document.querySelectorAll('.step-content').forEach((el, i) => {
-      const btn = el.querySelector('.btn-next');
-      if (btn) btn.disabled = (i >= maxStep);
-    });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
-
-  // 초기 잠금
-  setTimeout(() => {
-    document.querySelectorAll('.btn-next').forEach(btn => btn.disabled = true);
-    document.querySelectorAll('.step-nav-item').forEach((el, i) => {
-      if (i > 0) { el.style.opacity = '0.35'; el.style.cursor = 'default'; el.style.pointerEvents = 'none'; }
-    });
-  }, 0);
-
-
   // API 키는 설정 페이지에서 저장, 여기서는 localStorage에서 읽기만
   function getApiKey() { return localStorage.getItem('claude_api_key') || ''; }
   function getElevenKey() { return localStorage.getItem('eleven_api_key') || ''; }
@@ -578,7 +467,7 @@
     document.getElementById('load-btn').disabled = false;
     document.getElementById('load-btn').textContent = '불러오기';
     const sttBtn = document.getElementById('stt-btn');
-    sttBtn.disabled = false; sttBtn.textContent = '🎙 스크립트 추출';
+    sttBtn.disabled = false; sttBtn.textContent = '🎙 음성 인식';
     const ttsBtn = document.getElementById('tts-btn');
     ttsBtn.disabled = false; ttsBtn.textContent = '음성 생성';
     const genBtn = document.getElementById('gen-script-btn');
@@ -586,14 +475,18 @@
   }
 
   // ── 로딩 표시 ──
-  function showLoading(step, sub) {
+  function showLoading(step, sub, pct) {
     const bar = document.getElementById('loading-bar');
     bar.classList.add('show');
     document.getElementById('loading-step').textContent = step;
     document.getElementById('loading-sub').textContent = sub || '';
+    if (pct !== undefined) document.getElementById('loading-fill').style.width = pct + '%';
+    document.getElementById('loading-cancel-btn').style.display = 'block';
   }
   function hideLoading() {
     document.getElementById('loading-bar').classList.remove('show');
+    document.getElementById('loading-fill').style.width = '0%';
+    document.getElementById('loading-cancel-btn').style.display = 'none';
     currentAbort = null;
   }
 
@@ -615,6 +508,9 @@
     }
     if (document.getElementById('script-modal').classList.contains('show')) {
       document.getElementById('script-modal').classList.remove('show'); _modalStack = Math.max(0, _modalStack - 1); return;
+    }
+    if (document.getElementById('photo-modal').style.display === 'flex') {
+      document.getElementById('photo-modal').style.display = 'none'; _modalStack = Math.max(0, _modalStack - 1); return;
     }
     if (document.getElementById('settings-modal').style.display === 'flex') {
       document.getElementById('settings-modal').style.display = 'none';
@@ -843,7 +739,7 @@ JSON만 반환 (다른 텍스트 없이):
     const btn = document.getElementById('load-btn');
     btn.disabled = true;
     btn.textContent = '추출 중...';
-    showLoading('기사를 읽고 있어요', '본문을 추출하는 중이에요');
+    showLoading('기사 본문 추출 중', '페이지에서 텍스트를 가져오고 있어요', 30);
 
     try {
       currentAbort = new AbortController();
@@ -866,7 +762,6 @@ JSON만 반환 (다른 텍스트 없이):
 
       hideLoading();
       toast('기사 본문 추출 완료!');
-
 
       showPresetSelect();
       const genBtn = document.getElementById('gen-script-btn');
@@ -892,7 +787,7 @@ JSON만 반환 (다른 텍스트 없이):
     const btn = document.getElementById('load-btn');
     btn.disabled = true;
     btn.textContent = '불러오는 중...';
-    showLoading('영상을 가져오고 있어요', 'YouTube에서 다운로드하는 중이에요');
+    showLoading('영상 다운로드 중', 'YouTube에서 영상을 가져오고 있어요', 10);
 
     try {
       console.log('[영상] fetch 시작:', url);
@@ -916,7 +811,6 @@ JSON만 반환 (다른 텍스트 없이):
 
       hideLoading();
       toast('영상 불러오기 완료!');
-
       document.getElementById('stt-btn').classList.add('btn-glow');
     } catch(e) {
       console.error('[영상] 다운로드 실패, video-info fallback:', e.message);
@@ -924,7 +818,7 @@ JSON만 반환 (다른 텍스트 없이):
 
       // 영상 다운로드 실패 → YouTube 자막 + 스토리보드로 fallback
       try {
-        showLoading('영상 정보를 가져오고 있어요', '자막과 프레임을 추출하는 중이에요');
+        showLoading('영상 정보 가져오는 중', 'YouTube에서 자막과 프레임을 추출하고 있어요', 30);
         const infoRes = await fetch(`/api/video-info?url=${encodeURIComponent(url)}`);
         if (!infoRes.ok) throw new Error('영상 정보 가져오기 실패');
         ytVideoInfo = await infoRes.json();
@@ -946,7 +840,7 @@ JSON만 반환 (다른 텍스트 없이):
 
         // 스토리보드에서 프레임 추출
         if (ytVideoInfo.storyboards && ytVideoInfo.storyboards.length > 0) {
-          showLoading('프레임을 추출하고 있어요', '거의 다 됐어요');
+          showLoading('프레임 추출 중', '스토리보드에서 프레임을 가져오고 있어요', 50);
           frames = await extractStoryboardFrames(ytVideoInfo.storyboards, ytVideoInfo.duration);
         }
 
@@ -968,7 +862,6 @@ JSON만 반환 (다른 텍스트 없이):
         if (ytVideoInfo.transcript?.length) msgs.push('자막 추출 완료');
         if (frames.length) msgs.push(`프레임 ${frames.length}장 추출`);
         toast(msgs.length ? msgs.join(' · ') : '영상 정보를 가져왔어요');
-
 
       } catch(e2) {
         console.error('[영상] video-info도 실패:', e2.message);
@@ -1127,7 +1020,7 @@ JSON만 반환 (다른 텍스트 없이):
     }
     document.getElementById('modal').classList.add('show');
     // 사진매칭 모달 위에서 열린 경우 history 안 건드림
-    _modalFromPhotoMatch = (currentStep === 3);
+    _modalFromPhotoMatch = document.getElementById('photo-modal').style.display === 'flex';
     if (!_modalFromPhotoMatch) _pushModal();
   }
 
@@ -1176,7 +1069,7 @@ JSON만 반환 (다른 텍스트 없이):
     a.click();
   }
 
-  // ── 스크립트 추출 (Whisper in Web Worker) ──
+  // ── 음성 인식 (Whisper in Web Worker) ──
   let whisperWorker = null;
 
   async function transcribeVideo() {
@@ -1210,8 +1103,8 @@ JSON만 반환 (다른 텍스트 없이):
         whisperWorker = new Worker('/whisper-worker.js', { type: 'module' });
       }
 
-      btn.textContent = '스크립트 추출 중...';
-      showLoading('스크립트를 추출하고 있어요', '첫 실행은 모델 다운로드 때문에 조금 걸려요');
+      btn.textContent = '음성 인식 중...';
+      showLoading('음성 인식 준비 중', 'Whisper 모델을 불러오고 있어요 (첫 실행만 오래 걸려요)', 40);
 
       whisperWorker.onmessage = (e) => {
         const { type, text, result, message } = e.data;
@@ -1220,8 +1113,9 @@ JSON만 반환 (다른 텍스트 없이):
           const isFetching = text.includes('다운로드');
           const isRecognizing = text.includes('인식 중');
           showLoading(
-            isFetching ? '모델을 다운로드하고 있어요' : isRecognizing ? '스크립트 추출 중이에요' : '처리하고 있어요',
-            isFetching ? '첫 실행만 필요해요 (약 15MB)' : isRecognizing ? '조금만 기다려주세요' : text
+            isFetching ? '모델 다운로드 중' : isRecognizing ? '음성 인식 중' : '처리 중',
+            isFetching ? '약 40MB, 첫 실행만 필요해요' : isRecognizing ? '잠시만 기다려주세요...' : text,
+            isFetching ? 50 : isRecognizing ? 70 : 60
           );
         } else if (type === 'result') {
           console.log('[STT] 결과:', result);
@@ -1238,19 +1132,18 @@ JSON만 반환 (다른 텍스트 없이):
           }
           hideLoading();
           updateCaptionPreview();
-          toast('스크립트 추출 완료!');
-
+          toast('음성 인식 완료!');
           showPresetSelect();
           btn.disabled = false;
-          btn.textContent = '🎙 스크립트 추출';
+          btn.textContent = '🎙 음성 인식';
           const genBtn = document.getElementById('gen-script-btn');
           if (genBtn && genBtn.style.display !== 'none') genBtn.classList.add('btn-glow');
         } else if (type === 'error') {
-          document.getElementById('caption-content').textContent = '스크립트 추출 실패: ' + message;
-          toast('스크립트 추출 실패');
+          document.getElementById('caption-content').textContent = '음성 인식 실패: ' + message;
+          toast('음성 인식 실패');
           hideLoading();
           btn.disabled = false;
-          btn.textContent = '🎙 스크립트 추출';
+          btn.textContent = '🎙 음성 인식';
         }
       };
 
@@ -1260,10 +1153,10 @@ JSON만 반환 (다른 텍스트 없이):
 
     } catch(e) {
       console.error('[STT] 에러:', e);
-      document.getElementById('caption-content').textContent = '스크립트 추출 실패: ' + e.message;
-      toast('스크립트 추출 실패');
+      document.getElementById('caption-content').textContent = '음성 인식 실패: ' + e.message;
+      toast('음성 인식 실패');
       btn.disabled = false;
-      btn.textContent = '🎙 스크립트 추출';
+      btn.textContent = '🎙 음성 인식';
     }
   }
 
@@ -1326,7 +1219,7 @@ JSON만 반환 (다른 텍스트 없이):
 
     try {
       currentAbort = new AbortController();
-      showLoading('대본을 작성하고 있어요', 'AI가 열심히 쓰고 있어요');
+      showLoading('대본 생성 중', 'Claude가 대본을 작성하고 있어요', 50);
       const samplesText = samples.map((s, i) => `[표본 ${i + 1}]\n${s}`).join('\n\n---\n\n');
 
       const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -1367,8 +1260,8 @@ ${transcript}
       hideLoading();
       trackUsage('대본 생성', data.usage);
       toast('대본 생성 완료!');
-
       showTTSControls();
+      document.getElementById('photo-match-btn').style.display = 'inline-block';
       document.getElementById('tts-btn').classList.add('btn-glow');
 
     } catch(e) {
@@ -1402,7 +1295,6 @@ ${transcript}
 
   function showTTSControls() {
     if (getElevenKey() || getTypecastKey()) {
-      document.getElementById('tts-section-wrap').style.display = 'block';
       document.getElementById('tts-controls').style.display = 'block';
       if (getElevenKey()) switchTTSService('eleven');
       else switchTTSService('typecast');
@@ -1421,18 +1313,6 @@ ${transcript}
     tcTab.style.color = service === 'typecast' ? 'var(--accent)' : 'var(--muted2)';
 
     document.getElementById('srt-download-btn').style.display = 'inline-block';
-
-    // 배속 슬라이더 범위 조정
-    const speedSlider = document.getElementById('tts-speed');
-    if (service === 'eleven') {
-      speedSlider.min = '0.7'; speedSlider.max = '1.2'; speedSlider.step = '0.05';
-    } else {
-      speedSlider.min = '0.5'; speedSlider.max = '2.0'; speedSlider.step = '0.1';
-    }
-    if (parseFloat(speedSlider.value) < parseFloat(speedSlider.min) || parseFloat(speedSlider.value) > parseFloat(speedSlider.max)) {
-      speedSlider.value = '1.0';
-      document.getElementById('tts-speed-val').textContent = '1.0x';
-    }
 
     // 타입캐스트 문장별 감정 패널
     if (service === 'typecast') buildSentenceEmotionPanel();
@@ -1954,8 +1834,7 @@ ${transcript}
     document.getElementById('tts-audio').src = ttsAudioUrl;
     document.getElementById('tts-audio').style.display = 'block';
     document.getElementById('tts-download').style.display = 'flex';
-    document.getElementById('step0-actions').style.display = 'flex';
-    unlockStep(1);
+    document.getElementById('photo-match-btn').style.display = 'inline-block';
     toast(msg);
   }
 
@@ -2102,8 +1981,14 @@ ${transcript}
   // ── 장면별 사진 찾기 (photo-finder.js 엔진 사용) ──
   let photoResults = [];
 
-  function openPhotoModal() { goToStep(3); }
-  function closePhotoModal() { goToStep(2); }
+  function openPhotoModal() {
+    document.getElementById('photo-modal').style.display = 'flex';
+    _pushModal();
+  }
+  function closePhotoModal() {
+    document.getElementById('photo-modal').style.display = 'none';
+    _popModal();
+  }
 
   async function startPhotoSearch() {
     const apiKey = getApiKey();
@@ -2134,7 +2019,6 @@ ${transcript}
       results.forEach((r, i) => renderPhotoCard(i, r));
 
       statusEl.textContent = `${sentences.length}개 장면 사진 찾기 완료!`;
-      unlockStep(2);
       document.getElementById('photo-done').style.display = 'block';
     } catch(e) {
       statusEl.textContent = '실패: ' + e.message;
