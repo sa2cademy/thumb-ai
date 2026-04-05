@@ -2,6 +2,7 @@
 const PF = (() => {
 
 const selectedPhotoKeys = new Set();
+const selectedImageFiles = new Set(); // 파일명 기반 중복 방지
 
 // ─────────────────────────────────────────────
 //  상수
@@ -358,7 +359,7 @@ function evaluateCandidate(item, query, plan, cardIndex) {
   if (plan.entity_type==='title'  && TITLE_POSITIVE.some(h  => haystack.includes(h))) score += 16;
   if (plan.entity_type==='symbol' && /flag|태극기/.test(haystack))                     score += 16;
 
-  if (selectedPhotoKeys.has(key)) return null;
+  if (isAlreadyUsedImage(key)) return null;
   if (score < 8) return null;
 
   return { ...item, width:width||800, height:height||600, title, hostname, link, thumbnail, score, sourceQuery:query };
@@ -486,6 +487,27 @@ function uniqueStrings(arr) {
   return [...new Set((arr||[]).map(item => String(item||'').trim()).filter(Boolean))];
 }
 
+function extractImageFileName(url) {
+  try {
+    const pathname = new URL(url).pathname;
+    const filename = pathname.split('/').pop();
+    return filename ? filename.toLowerCase().replace(/\?.*/,'') : '';
+  } catch(_) { return ''; }
+}
+
+function isAlreadyUsedImage(link) {
+  if (selectedPhotoKeys.has(link)) return true;
+  const filename = extractImageFileName(link);
+  if (filename && filename.length > 8 && selectedImageFiles.has(filename)) return true;
+  return false;
+}
+
+function registerUsedImage(link) {
+  if (link) selectedPhotoKeys.add(link);
+  const filename = extractImageFileName(link);
+  if (filename && filename.length > 8) selectedImageFiles.add(filename);
+}
+
 function uniquePhotos(photos) {
   const map = new Map();
   (photos||[]).forEach(p => {
@@ -517,6 +539,7 @@ function truncateText(text, max) {
 // ── 메인 진입점 ──
 async function findPhotos(sentences, keyword, apiKey, onProgress) {
   selectedPhotoKeys.clear();
+  selectedImageFiles.clear();
   const facePriorityLock = true;
 
   onProgress?.('AI가 대본을 분석하고 있어요...');
@@ -536,7 +559,7 @@ async function findPhotos(sentences, keyword, apiKey, onProgress) {
       });
 
       const reranked = await secondPassRerankPhotos(searchResult.photos, plan, apiKey);
-      reranked.slice(0,4).forEach(p => { const k=p.link||p.thumbnail; if(k) selectedPhotoKeys.add(k); });
+      reranked.slice(0,6).forEach(p => registerUsedImage(p.link || p.thumbnail));
       results.push({ sentence:sentences[i], plan, photos:reranked.slice(0,6) });
     } catch(e) {
       console.error('카드', i, '오류:', e);
