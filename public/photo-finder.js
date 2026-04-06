@@ -536,6 +536,22 @@ function truncateText(text, max) {
   return s.length > max ? `${s.slice(0, max-1)}…` : s;
 }
 
+// ── 문장에서 맥락 키워드 추출 ──
+function extractContextKeywords(sentence, representativeKeyword) {
+  const repTokens = tokenize(representativeKeyword || '').map(t => t.toLowerCase());
+  const words = tokenize(sentence).filter(t => {
+    if (t.length < 2) return false;
+    if (repTokens.includes(t.toLowerCase())) return false;
+    // 일반 조사/어미 제외
+    if (/^(이|가|을|를|은|는|에|서|도|의|로|와|과|만|한|된|인|그|이|저)$/.test(t)) return false;
+    return true;
+  });
+  // 고유명사 우선 (한글 2-4자, 영문 대문자)
+  const proper = words.filter(t => /^[가-힣]{2,4}$/.test(t) || /[A-Z]{2,}/.test(t));
+  const rest = words.filter(t => !proper.includes(t) && t.length >= 2);
+  return [...proper, ...rest].slice(0, 3);
+}
+
 // ── 메인 진입점 ──
 async function findPhotos(sentences, keyword, apiKey, onProgress) {
   selectedPhotoKeys.clear();
@@ -552,15 +568,36 @@ async function findPhotos(sentences, keyword, apiKey, onProgress) {
       const plan = buildSentencePlan(i, sentences, keyword, globalPlan, facePriorityLock);
       if (!plan) { results.push({sentence:sentences[i], plan:null, photos:[]}); continue; }
 
-      const searchResult = await searchByPriorityQueries({
-        queries: plan.search_queries, plan,
-        targetCount: INITIAL_TARGET_RESULTS,
+      // 1) 대표 인물 고화질 사진 검색 (2장)
+      const personQueries = keyword
+        ? [`${keyword} 고화질`, `${keyword} 공식 사진`]
+        : plan.search_queries.slice(0, 2);
+      const personPlan = { ...plan, search_queries: personQueries };
+      const personResult = await searchByPriorityQueries({
+        queries: personQueries, plan: personPlan,
+        targetCount: 8,
         previousStarts: {}, cardIndex: i
       });
+      const personPhotos = uniquePhotos(personResult.photos).sort((a,b) => b.score - a.score).slice(0, 2);
+      personPhotos.forEach(p => registerUsedImage(p.link || p.thumbnail));
 
-      const reranked = await secondPassRerankPhotos(searchResult.photos, plan, apiKey);
-      reranked.slice(0,6).forEach(p => registerUsedImage(p.link || p.thumbnail));
-      results.push({ sentence:sentences[i], plan, photos:reranked.slice(0,6) });
+      // 2) 대본 맥락 관련 사진 검색 (2~3장)
+      const contextKeywords = extractContextKeywords(sentences[i], keyword);
+      const contextQueries = contextKeywords.length > 0
+        ? contextKeywords.map(kw => keyword ? `${keyword} ${kw}` : kw)
+        : plan.search_queries.slice(0, 2);
+      const contextResult = await searchByPriorityQueries({
+        queries: contextQueries, plan,
+        targetCount: 10,
+        previousStarts: {}, cardIndex: i
+      });
+      const contextReranked = await secondPassRerankPhotos(contextResult.photos, plan, apiKey);
+      const contextPhotos = contextReranked.slice(0, 3);
+      contextPhotos.forEach(p => registerUsedImage(p.link || p.thumbnail));
+
+      // 합치기: 인물 2장 + 맥락 2~3장
+      const combined = [...personPhotos, ...contextPhotos];
+      results.push({ sentence:sentences[i], plan, photos:combined });
     } catch(e) {
       console.error('카드', i, '오류:', e);
       results.push({sentence:sentences[i], plan:null, photos:[]});
